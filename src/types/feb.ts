@@ -145,6 +145,20 @@ export function isValidatorRole(role: Role): boolean {
   return VALIDATOR_ROLES.includes(role) || role === "admin";
 }
 
+// Days a FEB has been pending (since createdAt) — only meaningful for in-flight FEBs
+export function pendingDays(feb: Feb): number {
+  const start = new Date(feb.createdAt).getTime();
+  const now = Date.now();
+  return Math.floor((now - start) / (1000 * 60 * 60 * 24));
+}
+
+// A FEB is "late" if it's still in the validation circuit and older than the threshold
+export const LATE_THRESHOLD_DAYS = 5;
+export function isLate(feb: Feb): boolean {
+  if (!feb.status.startsWith("en_attente")) return false;
+  return pendingDays(feb) >= LATE_THRESHOLD_DAYS;
+}
+
 // Average validation duration in days for fully-validated FEBs
 export function averageValidationDays(febs: Feb[]): number {
   const validated = febs.filter((f) => f.status === "validee" && f.validations.length > 0);

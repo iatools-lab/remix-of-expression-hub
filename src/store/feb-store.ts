@@ -39,6 +39,7 @@ interface FebStore {
   currentUserId: string;
   febs: Feb[];
   setCurrentUser: (id: string) => void;
+  ensureUserFromAuth: (auth: { email: string; name: string; role: Role }) => void;
   getCurrentUser: () => User;
   createFeb: (input: {
     natureBesoin: string;
@@ -63,6 +64,27 @@ export const useFebStore = create<FebStore>()(
       currentUserId: DEFAULT_USERS[0].id,
       febs: seedFebs(DEFAULT_USERS),
       setCurrentUser: (id) => set({ currentUserId: id }),
+      ensureUserFromAuth: ({ email, name, role }) => {
+        const state = get();
+        const existing = state.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+        if (existing) {
+          // Keep role in sync (in case mapping changed) and select this user.
+          const updatedUsers =
+            existing.role === role
+              ? state.users
+              : state.users.map((u) => (u.id === existing.id ? { ...u, role } : u));
+          set({ users: updatedUsers, currentUserId: existing.id });
+          return;
+        }
+        const newUser: User = {
+          id: crypto.randomUUID(),
+          name,
+          role,
+          department: "Direction Générale",
+          email,
+        };
+        set({ users: [...state.users, newUser], currentUserId: newUser.id });
+      },
       getCurrentUser: () => {
         const s = get();
         return s.users.find((u) => u.id === s.currentUserId) ?? s.users[0];

@@ -12,7 +12,9 @@ export default function DemandeurDashboard() {
 
   const mine = febs.filter((f) => f.demandeurId === user.id);
   const total = mine.length;
-  const enCours = mine.filter((f) => f.status.startsWith("en_attente") || f.status === "brouillon").length;
+  const enCours = mine.filter(
+    (f) => f.status.startsWith("en_attente") || f.status === "brouillon"
+  ).length;
   const validees = mine.filter((f) => f.status === "validee").length;
   const rejetees = mine.filter((f) => f.status === "rejetee").length;
 
@@ -31,7 +33,9 @@ export default function DemandeurDashboard() {
             Bonjour {user.name.split(" ")[0]}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {total === 0 ? "Aucune FEB pour le moment." : `${total} fiche${total > 1 ? "s" : ""} au total.`}
+            {total === 0
+              ? "Vous n'avez pas encore créé de FEB."
+              : `${total} fiche${total > 1 ? "s" : ""} au total.`}
           </p>
         </div>
         <Link

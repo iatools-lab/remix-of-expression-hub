@@ -4,13 +4,22 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
+import { RequireAuth } from "@/components/RequireAuth";
 import Dashboard from "./pages/Dashboard";
-import FebList from "./pages/FebList";
+import Historique from "./pages/Historique";
+import Validation from "./pages/Validation";
 import FebCreate from "./pages/FebCreate";
 import FebDetail from "./pages/FebDetail";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
+
+const Protected = ({ children }: { children: React.ReactNode }) => (
+  <RequireAuth>
+    <AppLayout>{children}</AppLayout>
+  </RequireAuth>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -19,10 +28,12 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<AppLayout><Dashboard /></AppLayout>} />
-          <Route path="/febs" element={<AppLayout><FebList /></AppLayout>} />
-          <Route path="/febs/nouveau" element={<AppLayout><FebCreate /></AppLayout>} />
-          <Route path="/febs/:id" element={<AppLayout><FebDetail /></AppLayout>} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Protected><Dashboard /></Protected>} />
+          <Route path="/historique" element={<Protected><Historique /></Protected>} />
+          <Route path="/validation" element={<Protected><Validation /></Protected>} />
+          <Route path="/febs/nouveau" element={<Protected><FebCreate /></Protected>} />
+          <Route path="/febs/:id" element={<Protected><FebDetail /></Protected>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

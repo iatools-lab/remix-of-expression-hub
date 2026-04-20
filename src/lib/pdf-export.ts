@@ -1,0 +1,160 @@
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { Feb, ROLE_LABELS } from "@/types/feb";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+
+export function exportFebPdf(feb: Feb) {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 15;
+
+  // Header table (logo placeholder + title + meta)
+  autoTable(doc, {
+    startY: margin,
+    theme: "grid",
+    styles: { fontSize: 8, cellPadding: 2, valign: "middle", textColor: [20, 20, 30] },
+    headStyles: { fillColor: [30, 41, 59], textColor: 255, halign: "center" },
+    columnStyles: {
+      0: { cellWidth: 35, halign: "center" },
+      1: { cellWidth: 100, halign: "center", fontStyle: "bold" },
+      2: { cellWidth: 45, halign: "center" },
+    },
+    body: [
+      [
+        { content: "upöwa", styles: { fontStyle: "bold", fontSize: 14, textColor: [30, 41, 59] } },
+        { content: "FICHE D'EXPRESSION DE BESOIN EN ACHAT", styles: { fontSize: 11 } },
+        { content: "DS - 0016\nVersion : 1.0", styles: { fontSize: 8 } },
+      ],
+      [
+        { content: "" },
+        { content: `Mise en application : 20/01/2025`, styles: { fontSize: 8 } },
+        { content: "Procédure de référence : PS-0012", styles: { fontSize: 8 } },
+      ],
+      [
+        { content: "" },
+        { content: `Numéro de la fiche : ${feb.numero}`, styles: { fontSize: 9, fontStyle: "bold" } },
+        { content: `Nature : ${feb.natureBesoin}`, styles: { fontSize: 8 } },
+      ],
+    ],
+  });
+
+  let y = (doc as any).lastAutoTable.finalY + 6;
+
+  // Section a — Département
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("a. Département demandeur", margin, y);
+  y += 2;
+  autoTable(doc, {
+    startY: y + 2,
+    theme: "grid",
+    styles: { fontSize: 8, cellPadding: 2 },
+    body: [[{ content: `● ${feb.departement}`, styles: { fontStyle: "bold", fillColor: [255, 247, 200] } }]],
+  });
+  y = (doc as any).lastAutoTable.finalY + 6;
+
+  // Section b — Identification du besoin
+  doc.setFont("helvetica", "bold");
+  doc.text("b. Identification du besoin", margin, y);
+
+  autoTable(doc, {
+    startY: y + 2,
+    theme: "grid",
+    styles: { fontSize: 8, cellPadding: 2.5, valign: "middle" },
+    headStyles: { fillColor: [30, 41, 59], textColor: 255, halign: "center", fontStyle: "bold" },
+    head: [["N°", "Désignation", "Quantité", "Caractéristiques techniques", "Prix estimé (FCFA)"]],
+    body: [
+      ...feb.items.map((it, i) => [
+        String(i + 1),
+        it.designation,
+        String(it.quantite),
+        it.caracteristiques || "-",
+        new Intl.NumberFormat("fr-FR").format(it.prixEstime),
+      ]),
+      [
+        { content: "Total estimé", colSpan: 4, styles: { fontStyle: "bold", halign: "right", fillColor: [241, 245, 249] } },
+        {
+          content: new Intl.NumberFormat("fr-FR").format(feb.totalEstime),
+          styles: { fontStyle: "bold", halign: "right", fillColor: [241, 245, 249] },
+        },
+      ],
+    ],
+    columnStyles: {
+      0: { cellWidth: 12, halign: "center" },
+      2: { cellWidth: 22, halign: "center" },
+      4: { cellWidth: 35, halign: "right" },
+    },
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 6;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text(
+    "NB : Si cahier de charges, bien vouloir le rattacher en annexe à la présente fiche.",
+    margin,
+    y
+  );
+  y += 6;
+  doc.text(
+    `Délais de livraison souhaité : ${format(new Date(feb.delaiLivraison), "dd MMMM yyyy", { locale: fr })}`,
+    margin,
+    y
+  );
+  y += 5;
+  doc.text(`Fournisseur potentiel : ${feb.fournisseurPotentiel}`, margin, y);
+  y += 6;
+
+  // Section c — Validation
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("c. Validation de la fiche", margin, y);
+
+  const sigRow: any[] = [
+    { content: "Demandeur", styles: { fontStyle: "bold", fillColor: [241, 245, 249] } },
+    { content: "Resp. Pôle Technique", styles: { fontStyle: "bold", fillColor: [241, 245, 249] } },
+    { content: "Responsable du Pôle", styles: { fontStyle: "bold", fillColor: [241, 245, 249] } },
+    { content: "Resp. Pôle Admin & Financier", styles: { fontStyle: "bold", fillColor: [241, 245, 249] } },
+  ];
+
+  const valTech = feb.validations.find((v) => v.role === "responsable_technique");
+  const valPole = feb.validations.find((v) => v.role === "responsable_pole");
+  const valRpaf = feb.validations.find((v) => v.role === "rpaf");
+
+  const sigDataRow = [
+    feb.demandeurName,
+    valTech ? `${valTech.userName}\n${valTech.action === "approuvee" ? "✓ Validé" : "✗ Rejeté"}` : feb.needsTechnicalReview ? "En attente" : "N/A",
+    valPole ? `${valPole.userName}\n${valPole.action === "approuvee" ? "✓ Validé" : "✗ Rejeté"}` : "En attente",
+    valRpaf ? `${valRpaf.userName}\n${valRpaf.action === "approuvee" ? "✓ Validé" : "✗ Rejeté"}` : "En attente",
+  ];
+
+  autoTable(doc, {
+    startY: y + 2,
+    theme: "grid",
+    styles: { fontSize: 8, cellPadding: 3, valign: "middle", halign: "center", minCellHeight: 18 },
+    body: [sigRow, sigDataRow],
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 4;
+  const valRecep = feb.validations.find((v) => v.role === "supply_chain");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text(
+    `Réception au Pôle Operation & Supply Chain : ${valRecep ? `${valRecep.userName} — ${format(new Date(valRecep.date), "dd/MM/yyyy")}` : "_____________"}`,
+    margin,
+    y
+  );
+
+  // Footer
+  doc.setFontSize(7);
+  doc.setTextColor(120);
+  doc.text(
+    "Ce document est strictement confidentiel et ne peut être partagé avec un tiers sans autorisation écrite d'un membre du Comité de Direction.",
+    pageW / 2,
+    doc.internal.pageSize.getHeight() - 8,
+    { align: "center", maxWidth: pageW - 2 * margin }
+  );
+
+  doc.save(`FEB-${feb.numero.replace(/\//g, "_")}.pdf`);
+}

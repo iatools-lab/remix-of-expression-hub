@@ -132,3 +132,27 @@ export function canActOn(feb: Feb, role: Role): boolean {
   if (role === "admin") return false;
   return roleForStatus(feb.status) === role;
 }
+
+// Roles that participate in the validation circuit (can both create AND validate)
+export const VALIDATOR_ROLES: Role[] = [
+  "responsable_technique",
+  "responsable_pole",
+  "rpaf",
+  "supply_chain",
+];
+
+export function isValidatorRole(role: Role): boolean {
+  return VALIDATOR_ROLES.includes(role) || role === "admin";
+}
+
+// Average validation duration in days for fully-validated FEBs
+export function averageValidationDays(febs: Feb[]): number {
+  const validated = febs.filter((f) => f.status === "validee" && f.validations.length > 0);
+  if (validated.length === 0) return 0;
+  const totalDays = validated.reduce((sum, f) => {
+    const start = new Date(f.createdAt).getTime();
+    const end = new Date(f.validations[f.validations.length - 1].date).getTime();
+    return sum + (end - start) / (1000 * 60 * 60 * 24);
+  }, 0);
+  return Math.round((totalDays / validated.length) * 10) / 10;
+}

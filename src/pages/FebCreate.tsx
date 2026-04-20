@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFebStore, formatXAF } from "@/store/feb-store";
 import { DEPARTMENTS, Department, FebItem } from "@/types/feb";
-import { Trash2, Plus, Save, Send, ArrowLeft } from "lucide-react";
+import { Trash2, Plus, Save, Send, ArrowLeft, ImagePlus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { fileToCompressedDataUrl } from "@/lib/image-utils";
 import {
   Select,
   SelectContent,
@@ -40,6 +41,16 @@ export default function FebCreate() {
     setItems([...items, { id: crypto.randomUUID(), designation: "", quantite: 1, caracteristiques: "", prixEstime: 0 }]);
 
   const removeItem = (id: string) => setItems(items.filter((it) => it.id !== id));
+
+  const handleItemPhoto = async (id: string, file: File | undefined) => {
+    if (!file) return;
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file, 800, "image/jpeg", 0.8);
+      updateItem(id, { photo: dataUrl });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Image invalide");
+    }
+  };
 
   const handleSubmit = (submit: boolean) => {
     if (!natureBesoin.trim()) return toast.error("La nature du besoin est obligatoire.");
@@ -145,7 +156,7 @@ export default function FebCreate() {
           {items.map((it, idx) => (
             <div key={it.id} className="grid grid-cols-12 gap-3 items-start p-3 rounded-lg border border-border bg-muted/30">
               <div className="col-span-12 md:col-span-1 text-sm font-bold text-muted-foreground pt-2">#{idx + 1}</div>
-              <div className="col-span-12 md:col-span-4">
+              <div className="col-span-12 md:col-span-3">
                 <Label className="text-xs">Désignation *</Label>
                 <Input
                   value={it.designation}
@@ -185,6 +196,17 @@ export default function FebCreate() {
                   className="mt-1 bg-card"
                 />
               </div>
+
+              {/* Photo column */}
+              <div className="col-span-10 md:col-span-1">
+                <Label className="text-xs">Photo</Label>
+                <ItemPhotoField
+                  photo={it.photo}
+                  onChange={(file) => handleItemPhoto(it.id, file)}
+                  onRemove={() => updateItem(it.id, { photo: undefined })}
+                />
+              </div>
+
               <div className="col-span-2 md:col-span-1 flex justify-end pt-6">
                 <Button
                   type="button"
@@ -217,5 +239,54 @@ export default function FebCreate() {
         </Button>
       </div>
     </div>
+  );
+}
+
+interface ItemPhotoFieldProps {
+  photo?: string;
+  onChange: (file: File | undefined) => void;
+  onRemove: () => void;
+}
+
+function ItemPhotoField({ photo, onChange, onRemove }: ItemPhotoFieldProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  if (photo) {
+    return (
+      <div className="mt-1 relative w-full aspect-square rounded-md overflow-hidden border border-border bg-card group">
+        <img src={photo} alt="Photo article" className="w-full h-full object-cover" />
+        <button
+          type="button"
+          onClick={onRemove}
+          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label="Retirer la photo"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="mt-1 w-full aspect-square rounded-md border-2 border-dashed border-border bg-card hover:bg-muted/40 transition-colors flex items-center justify-center text-muted-foreground"
+        aria-label="Ajouter une photo"
+      >
+        <ImagePlus className="w-5 h-5" />
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg"
+        className="hidden"
+        onChange={(e) => {
+          onChange(e.target.files?.[0]);
+          if (inputRef.current) inputRef.current.value = "";
+        }}
+      />
+    </>
   );
 }

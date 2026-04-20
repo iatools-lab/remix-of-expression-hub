@@ -241,3 +241,52 @@ export default function FebCreate() {
     </div>
   );
 }
+
+interface ItemPhotoFieldProps {
+  photo?: string;
+  onChange: (file: File | undefined) => void;
+  onRemove: () => void;
+}
+
+function ItemPhotoField({ photo, onChange, onRemove }: ItemPhotoFieldProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  if (photo) {
+    return (
+      <div className="mt-1 relative w-full aspect-square rounded-md overflow-hidden border border-border bg-card group">
+        <img src={photo} alt="Photo article" className="w-full h-full object-cover" />
+        <button
+          type="button"
+          onClick={onRemove}
+          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label="Retirer la photo"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="mt-1 w-full aspect-square rounded-md border-2 border-dashed border-border bg-card hover:bg-muted/40 transition-colors flex items-center justify-center text-muted-foreground"
+        aria-label="Ajouter une photo"
+      >
+        <ImagePlus className="w-5 h-5" />
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg"
+        className="hidden"
+        onChange={(e) => {
+          onChange(e.target.files?.[0]);
+          if (inputRef.current) inputRef.current.value = "";
+        }}
+      />
+    </>
+  );
+}

@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { PenLine, Type, Trash2, Save, CheckCircle2 } from "lucide-react";
+import { PenLine, Type, Trash2, Save, CheckCircle2, Upload, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/store/auth-store";
 import { useSignatureStore } from "@/store/signature-store";
+import { fileToCompressedDataUrl } from "@/lib/image-utils";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type Mode = "drawn" | "typed";
+type Mode = "drawn" | "typed" | "upload";
 
 export default function Signature() {
   const user = useAuthStore((s) => s.user)!;
@@ -19,8 +20,12 @@ export default function Signature() {
   const [typedName, setTypedName] = useState(
     existing?.type === "typed" ? existing.value : user.name
   );
+  const [uploadedDataUrl, setUploadedDataUrl] = useState<string | null>(
+    existing?.type === "drawn" ? existing.value : null
+  );
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const drawingRef = useRef(false);
   const [hasDrawing, setHasDrawing] = useState(false);
 
@@ -88,6 +93,22 @@ export default function Signature() {
     setHasDrawing(false);
   }
 
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      // PNG output preserves transparency for clean signatures
+      const dataUrl = await fileToCompressedDataUrl(file, 1000, "image/png", 0.9);
+      setUploadedDataUrl(dataUrl);
+      toast.success("Image chargée — n'oubliez pas d'enregistrer");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Échec du chargement de l'image");
+    } finally {
+      // allow re-selecting the same file
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   function handleSave() {
     if (mode === "drawn") {
       if (!hasDrawing) {
@@ -98,6 +119,17 @@ export default function Signature() {
       setSignature(user.email, {
         type: "drawn",
         value: dataUrl,
+        updatedAt: new Date().toISOString(),
+      });
+      toast.success("Signature enregistrée");
+    } else if (mode === "upload") {
+      if (!uploadedDataUrl) {
+        toast.error("Veuillez d'abord importer une image.");
+        return;
+      }
+      setSignature(user.email, {
+        type: "drawn", // stored & rendered the same way as a drawn signature
+        value: uploadedDataUrl,
         updatedAt: new Date().toISOString(),
       });
       toast.success("Signature enregistrée");
@@ -119,6 +151,7 @@ export default function Signature() {
   function handleDelete() {
     clearSignature(user.email);
     handleClear();
+    setUploadedDataUrl(null);
     toast.success("Signature supprimée");
   }
 
@@ -147,35 +180,32 @@ export default function Signature() {
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
         {/* Mode tabs */}
         <div className="flex gap-2 mb-6 bg-muted/50 p-1 rounded-lg w-fit">
-          <button
-            type="button"
-            onClick={() => setMode("drawn")}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-              mode === "drawn"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <PenLine className="w-3.5 h-3.5" />
-            Dessiner
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("typed")}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-              mode === "typed"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Type className="w-3.5 h-3.5" />
-            Saisir le nom
-          </button>
+          {([
+            { value: "drawn", label: "Dessiner", icon: PenLine },
+            { value: "upload", label: "Importer", icon: Upload },
+            { value: "typed", label: "Saisir le nom", icon: Type },
+          ] as { value: Mode; label: string; icon: typeof PenLine }[]).map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setMode(tab.value)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                  mode === tab.value
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
-        {mode === "drawn" ? (
+        {mode === "drawn" && (
           <div className="space-y-3">
             <label className="text-xs font-medium text-foreground">
               Tracez votre signature dans la zone ci-dessous
@@ -197,7 +227,72 @@ export default function Signature() {
               </Button>
             </div>
           </div>
-        ) : (
+        )}
+
+        {mode === "upload" && (
+          <div className="space-y-3">
+            <label className="text-xs font-medium text-foreground">
+              Importez une image de votre signature (PNG ou JPG)
+            </label>
+
+            {uploadedDataUrl ? (
+              <div className="rounded-lg border border-border bg-white p-4 flex flex-col items-center gap-3">
+                <img
+                  src={uploadedDataUrl}
+                  alt="Aperçu de la signature"
+                  className="max-h-40 object-contain"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="w-3.5 h-3.5 mr-1.5" />
+                    Remplacer
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setUploadedDataUrl(null)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                    Retirer
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full rounded-lg border-2 border-dashed border-border bg-white hover:bg-muted/30 transition-colors py-12 flex flex-col items-center justify-center gap-2 text-muted-foreground"
+              >
+                <ImageIcon className="w-8 h-8" />
+                <p className="text-sm font-medium text-foreground">
+                  Cliquez pour choisir une image
+                </p>
+                <p className="text-xs">PNG ou JPG, fond blanc ou transparent recommandé</p>
+              </button>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+
+            <p className="text-[11px] text-muted-foreground">
+              💡 Pour un meilleur rendu, utilisez une image avec fond transparent (PNG)
+              ou une signature noire sur fond blanc.
+            </p>
+          </div>
+        )}
+
+        {mode === "typed" && (
           <div className="space-y-3">
             <label className="text-xs font-medium text-foreground">
               Nom à apposer en signature

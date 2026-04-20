@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFebStore, formatXAF } from "@/store/feb-store";
 import { DEPARTMENTS, Department, FebItem } from "@/types/feb";
-import { Trash2, Plus, Save, Send, ArrowLeft } from "lucide-react";
+import { Trash2, Plus, Save, Send, ArrowLeft, ImagePlus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { fileToCompressedDataUrl } from "@/lib/image-utils";
 import {
   Select,
   SelectContent,

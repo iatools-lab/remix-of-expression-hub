@@ -24,7 +24,7 @@ export default function Login() {
     setLoading(true);
     const res = login(email, password);
     setLoading(false);
-    if (!res.ok) {
+    if (res.ok !== true) {
       setError(res.error);
       return;
     }

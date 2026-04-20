@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
-import { FileText, CheckCircle2, XCircle, Clock, PlusCircle } from "lucide-react";
+import { Plus } from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { useFebStore } from "@/store/feb-store";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { RecentFebList } from "@/components/dashboard/RecentFebList";
@@ -19,28 +21,33 @@ export default function DemandeurDashboard() {
     .slice(0, 6);
 
   return (
-    <div className="space-y-8">
-      <header className="flex items-center justify-between">
+    <div className="space-y-8 max-w-5xl">
+      <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Mes fiches d'expression de besoin</h1>
-          <p className="text-muted-foreground mt-1">
-            Bonjour <span className="font-medium text-foreground">{user.name}</span>, voici l'état de vos demandes.
+          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+            {format(new Date(), "EEEE dd MMMM", { locale: fr })}
+          </p>
+          <h1 className="text-2xl font-semibold text-foreground mt-1 tracking-tight">
+            Bonjour {user.name.split(" ")[0]}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {total === 0 ? "Aucune FEB pour le moment." : `${total} fiche${total > 1 ? "s" : ""} au total.`}
           </p>
         </div>
         <Link
           to="/febs/nouveau"
-          className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-primary-glow transition-colors shadow-[var(--shadow-md)]"
+          className="inline-flex items-center gap-1.5 bg-foreground text-background px-3.5 py-2 rounded-md font-medium text-xs hover:bg-foreground/90 transition-colors"
         >
-          <PlusCircle className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
           Nouvelle FEB
         </Link>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard icon={FileText} label="Mes FEB" value={total} accent="info" />
-        <KpiCard icon={Clock} label="En cours" value={enCours} accent="warning" />
-        <KpiCard icon={CheckCircle2} label="Validées" value={validees} accent="success" />
-        <KpiCard icon={XCircle} label="Rejetées" value={rejetees} accent="destructive" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard label="Mes FEB" value={total} accent="neutral" />
+        <KpiCard label="En cours" value={enCours} accent="warning" />
+        <KpiCard label="Validées" value={validees} accent="success" />
+        <KpiCard label="Rejetées" value={rejetees} accent="destructive" />
       </div>
 
       <RecentFebList

@@ -1,0 +1,450 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// upöwa — FEB Dashboard
+// Schéma Prisma pour usage interne (PostgreSQL)
+//
+// Couvre :
+//   • Comptes utilisateurs (email + password hashé) restreints au domaine @upowa.org
+//   • Rôles & circuit de validation (Demandeur → Resp. Pôle → RPAF → Réception)
+//   • Référentiel Département + signataires par département
+//   • FEB (Fiches d'Expression de Besoin) avec articles, photos, statut
+//   • Étapes de validation historisées + signatures (image ou texte)
+//   • Stockage des fichiers EN BASE (Bytes) — signatures, photos, PDF générés
+//   • Audit log complet de toutes les actions critiques
+//   • Sessions d'authentification (refresh tokens)
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Rôles applicatifs. Un utilisateur a UN rôle principal.
+/// `DEMANDEUR` est le rôle par défaut pour toute adresse @upowa.org.
+enum Role {
+  DEMANDEUR
+  RESPONSABLE_TECHNIQUE
+  RESPONSABLE_POLE
+  RPAF // Responsable Pôle Administratif & Financier
+  SUPPLY_CHAIN // Réception au pôle Opérations & Supply Chain
+  ADMIN
+}
+
+/// État d'une FEB dans son circuit de validation.
+enum FebStatus {
+  BROUILLON
+  EN_ATTENTE_TECHNIQUE
+  EN_ATTENTE_POLE
+  EN_ATTENTE_RPAF
+  EN_ATTENTE_RECEPTION
+  VALIDEE
+  REJETEE
+  ANNULEE
+}
+
+/// Action posée par un signataire sur une FEB.
+enum ValidationAction {
+  APPROUVEE
+  REJETEE
+}
+
+/// Type de signature stockée pour un utilisateur.
+/// `DRAWN` couvre aussi bien un dessin canvas qu'une image importée (PNG/JPG).
+enum SignatureType {
+  DRAWN
+  TYPED
+}
+
+/// Catégorie d'un fichier stocké dans la table `FileAsset`.
+enum FileKind {
+  SIGNATURE
+  ITEM_PHOTO
+  FEB_PDF
+  ATTACHMENT
+}
+
+/// Niveau de gravité d'une entrée d'audit log.
+enum AuditSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+/// Type d'action tracée dans l'audit log.
+enum AuditAction {
+  // Auth
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  PASSWORD_CHANGED
+  PASSWORD_RESET_REQUESTED
+  // Users
+  USER_CREATED
+  USER_UPDATED
+  USER_ROLE_CHANGED
+  USER_DEACTIVATED
+  // Signatures
+  SIGNATURE_CREATED
+  SIGNATURE_UPDATED
+  SIGNATURE_DELETED
+  // FEB
+  FEB_CREATED
+  FEB_UPDATED
+  FEB_SUBMITTED
+  FEB_APPROVED
+  FEB_REJECTED
+  FEB_DELETED
+  FEB_PDF_EXPORTED
+  // Référentiel
+  DEPARTMENT_SIGNATORY_CHANGED
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTHENTIFICATION & UTILISATEURS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Utilisateur de la plateforme. Restreint au domaine @upowa.org au niveau applicatif
+/// (contrainte CHECK ci-dessous).
+model User {
+  id           String  @id @default(uuid()) @db.Uuid
+  email        String  @unique @db.Citext
+  /// Hash bcrypt/argon2 du mot de passe. Jamais exposé via l'API.
+  passwordHash String  @map("password_hash")
+  /// Nom d'affichage (dérivé de l'email à l'inscription, modifiable).
+  name         String  @db.VarChar(120)
+  role         Role    @default(DEMANDEUR)
+  /// Département de rattachement principal (utilisé pour pré-remplir le formulaire FEB).
+  departmentId String? @map("department_id") @db.Uuid
+
+  isActive  Boolean   @default(true) @map("is_active")
+  /// Date de la dernière connexion réussie.
+  lastLogin DateTime? @map("last_login") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  department          Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  signature           Signature?
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  febsCreated         Feb[]                @relation("FebDemandeur")
+  validations         FebValidation[]
+  auditLogs           AuditLog[]
+  // Rôles "spécifiques par département" que cet utilisateur occupe
+  signatoryRoles      DepartmentSignatory[]
+
+  @@index([role])
+  @@index([departmentId])
+  @@map("users")
+}
+
+/// Session d'authentification (refresh token rotatif). L'access token reste un JWT
+/// court non persisté. Permet la révocation côté serveur et le suivi des appareils.
+model Session {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  /// Hash du refresh token (jamais le token en clair).
+  refreshTokenHash String    @unique @map("refresh_token_hash")
+  userAgent        String?   @map("user_agent") @db.VarChar(500)
+  ipAddress        String?   @map("ip_address") @db.Inet
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Token unique pour réinitialiser un mot de passe (envoyé par email).
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+/// Signature personnelle d'un utilisateur (1 par compte).
+/// L'image (PNG/JPG dessinée ou importée) est stockée en base via `FileAsset`.
+model Signature {
+  id     String        @id @default(uuid()) @db.Uuid
+  userId String        @unique @map("user_id") @db.Uuid
+  type   SignatureType
+  /// Si type = TYPED : contient le nom à afficher (script).
+  /// Si type = DRAWN : null, et `imageId` pointe vers le fichier PNG/JPG.
+  typedValue String? @map("typed_value") @db.VarChar(120)
+  imageId    String? @unique @map("image_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  image FileAsset? @relation("SignatureImage", fields: [imageId], references: [id], onDelete: SetNull)
+
+  @@map("signatures")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RÉFÉRENTIEL DÉPARTEMENTS & SIGNATAIRES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Département de l'entreprise. Utilisé pour catégoriser les FEB et déterminer
+/// quels signataires interviennent.
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  /// Nom canonique (ex: "Supply Chains and Operations").
+  name      String   @unique @db.VarChar(120)
+  /// Code court (ex: "SC") utilisé pour les numéros de FEB.
+  code      String   @unique @db.VarChar(8)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users       User[]
+  febs        Feb[]
+  signatories DepartmentSignatory[]
+
+  @@map("departments")
+}
+
+/// Mapping département → signataire pour un rôle donné.
+/// Permet d'avoir des signataires DIFFÉRENTS par département pour les rôles
+/// RESPONSABLE_POLE, RPAF, SUPPLY_CHAIN (et éventuellement RESPONSABLE_TECHNIQUE).
+/// Un seul signataire actif (`isActive = true`) par couple (department, role).
+model DepartmentSignatory {
+  id           String  @id @default(uuid()) @db.Uuid
+  departmentId String  @map("department_id") @db.Uuid
+  /// Rôle "validateur" assigné à cet utilisateur pour ce département.
+  role         Role
+  userId       String  @map("user_id") @db.Uuid
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Un seul signataire par (département, rôle, utilisateur) — empêche les doublons.
+  @@unique([departmentId, role, userId])
+  @@index([departmentId, role, isActive])
+  @@map("department_signatories")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FEB (Fiche d'Expression de Besoin)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Une FEB représente une demande d'achat à valider.
+model Feb {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Numéro lisible : "001/15-04-2025/SC".
+  numero String @unique @db.VarChar(40)
+
+  natureBesoin         String  @map("nature_besoin") @db.VarChar(300)
+  fournisseurPotentiel String  @map("fournisseur_potentiel") @db.VarChar(200)
+  /// Indique si le circuit doit inclure le Responsable Pôle Technique.
+  needsTechnicalReview Boolean @default(false) @map("needs_technical_review")
+
+  /// Total estimé (FCFA). Stocké en `Decimal` pour éviter les pertes de précision.
+  totalEstime     Decimal @map("total_estime") @db.Decimal(14, 2)
+  delaiLivraison  DateTime @map("delai_livraison") @db.Date
+
+  status FebStatus @default(BROUILLON)
+
+  // Demandeur
+  demandeurId String @map("demandeur_id") @db.Uuid
+  /// Snapshot du nom au moment de la création (préservé même si l'utilisateur change de nom).
+  demandeurName String @map("demandeur_name") @db.VarChar(120)
+
+  // Département
+  departmentId String @map("department_id") @db.Uuid
+
+  /// Soft delete — la FEB n'est jamais physiquement supprimée pour préserver l'audit.
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  /// Date de soumission initiale (sortie de l'état BROUILLON).
+  submittedAt DateTime? @map("submitted_at") @db.Timestamptz(6)
+  /// Date de finalisation (VALIDEE ou REJETEE).
+  closedAt    DateTime? @map("closed_at") @db.Timestamptz(6)
+
+  // Relations
+  demandeur   User            @relation("FebDemandeur", fields: [demandeurId], references: [id], onDelete: Restrict)
+  department  Department      @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  items       FebItem[]
+  validations FebValidation[]
+  pdfExports  FebPdfExport[]
+
+  @@index([status])
+  @@index([demandeurId])
+  @@index([departmentId])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("febs")
+}
+
+/// Article (ligne) d'une FEB.
+model FebItem {
+  id              String  @id @default(uuid()) @db.Uuid
+  febId           String  @map("feb_id") @db.Uuid
+  /// Position de l'article dans la fiche (1, 2, 3…). Sert à conserver l'ordre.
+  position        Int     @default(1)
+  designation     String  @db.VarChar(300)
+  quantite        Int
+  caracteristiques String  @default("") @db.VarChar(500)
+  /// Prix estimé pour la ligne entière (pas le prix unitaire).
+  prixEstime      Decimal @map("prix_estime") @db.Decimal(14, 2)
+
+  /// Photo optionnelle du produit (PNG/JPG en base via `FileAsset`).
+  photoId String? @unique @map("photo_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  feb   Feb        @relation(fields: [febId], references: [id], onDelete: Cascade)
+  photo FileAsset? @relation("ItemPhoto", fields: [photoId], references: [id], onDelete: SetNull)
+
+  @@unique([febId, position])
+  @@index([febId])
+  @@map("feb_items")
+}
+
+/// Étape de validation historisée. Immutable — on n'UPDATE jamais une étape passée,
+/// on ajoute une nouvelle ligne pour chaque action.
+model FebValidation {
+  id     String           @id @default(uuid()) @db.Uuid
+  febId  String           @map("feb_id") @db.Uuid
+  /// Rôle qui a posé l'action (snapshot du rôle au moment de l'action).
+  role   Role
+  /// Utilisateur ayant agi (peut être null si compte ultérieurement supprimé).
+  userId String?          @map("user_id") @db.Uuid
+  /// Snapshot du nom au moment de l'action (préservé pour l'audit).
+  userName String         @map("user_name") @db.VarChar(120)
+  action ValidationAction
+  comment String?         @db.Text
+
+  /// Snapshot de la signature au moment de la validation (jamais re-référencé pour
+  /// rester valable même si l'utilisateur change ou supprime sa signature).
+  signatureType  SignatureType? @map("signature_type")
+  signatureTyped String?        @map("signature_typed") @db.VarChar(120)
+  /// Image PNG/JPG snapshotée. Pointe vers un FileAsset dédié à cette étape.
+  signatureImageId String?      @unique @map("signature_image_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  feb            Feb        @relation(fields: [febId], references: [id], onDelete: Cascade)
+  user           User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  signatureImage FileAsset? @relation("ValidationSignature", fields: [signatureImageId], references: [id], onDelete: SetNull)
+
+  @@index([febId, createdAt])
+  @@index([userId])
+  @@index([role])
+  @@map("feb_validations")
+}
+
+/// Trace chaque génération de PDF pour une FEB (audit + ré-téléchargement éventuel).
+model FebPdfExport {
+  id          String   @id @default(uuid()) @db.Uuid
+  febId       String   @map("feb_id") @db.Uuid
+  exportedById String  @map("exported_by_id") @db.Uuid
+  fileId      String   @unique @map("file_id") @db.Uuid
+  exportedAt  DateTime @default(now()) @map("exported_at") @db.Timestamptz(6)
+
+  feb        Feb       @relation(fields: [febId], references: [id], onDelete: Cascade)
+  file       FileAsset @relation("FebPdf", fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([febId])
+  @@map("feb_pdf_exports")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STOCKAGE FICHIERS (en base)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Tous les fichiers binaires de l'app : signatures, photos d'articles, PDF.
+/// Stockage en base via `Bytes` (= bytea PostgreSQL) — adapté à un usage interne
+/// avec volume modéré. Si le volume explose, migrer vers un bucket et garder le
+/// même modèle (remplacer `data` par une `storageUrl`).
+model FileAsset {
+  id        String   @id @default(uuid()) @db.Uuid
+  kind      FileKind
+  /// Type MIME exact (ex: "image/png", "application/pdf").
+  mimeType  String   @map("mime_type") @db.VarChar(100)
+  /// Nom d'origine du fichier (informatif).
+  filename  String   @db.VarChar(255)
+  /// Taille en octets (cache pour éviter de calculer à la volée).
+  sizeBytes Int      @map("size_bytes")
+  /// Hash SHA-256 du contenu — déduplication et vérification d'intégrité.
+  sha256    String   @db.Char(64)
+  /// Contenu binaire (bytea).
+  data      Bytes
+
+  /// Utilisateur qui a uploadé le fichier (null si import système).
+  uploadedById String? @map("uploaded_by_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations inverses (1-to-1 dans chaque cas)
+  signature           Signature?     @relation("SignatureImage")
+  itemPhoto           FebItem?       @relation("ItemPhoto")
+  validationSignature FebValidation? @relation("ValidationSignature")
+  febPdf              FebPdfExport?  @relation("FebPdf")
+
+  @@index([kind])
+  @@index([sha256])
+  @@map("file_assets")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Trace immuable de toutes les actions sensibles. Append-only côté applicatif.
+model AuditLog {
+  id        BigInt        @id @default(autoincrement())
+  action    AuditAction
+  severity  AuditSeverity @default(INFO)
+
+  /// Acteur (null pour actions système ou login échoué d'un email inconnu).
+  actorId    String? @map("actor_id") @db.Uuid
+  actorEmail String? @map("actor_email") @db.VarChar(255)
+
+  /// Cible générique (ex: "feb", "user", "signature"…) + identifiant.
+  targetType String? @map("target_type") @db.VarChar(50)
+  targetId   String? @map("target_id") @db.VarChar(64)
+
+  /// Contexte additionnel libre (avant/après, métadonnées, raison…).
+  metadata  Json?
+  ipAddress String? @map("ip_address") @db.Inet
+  userAgent String? @map("user_agent") @db.VarChar(500)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

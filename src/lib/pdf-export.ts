@@ -58,33 +58,77 @@ export function exportFebPdf(feb: Feb) {
   doc.setFont("helvetica", "bold");
   doc.text("b. Identification du besoin", margin, y);
 
+  const hasAnyPhoto = feb.items.some((it) => !!it.photo);
+
   autoTable(doc, {
     startY: y + 2,
     theme: "grid",
     styles: { fontSize: 8, cellPadding: 2.5, valign: "middle" },
     headStyles: { fillColor: [30, 41, 59], textColor: 255, halign: "center", fontStyle: "bold" },
-    head: [["N°", "Désignation", "Quantité", "Caractéristiques techniques", "Prix estimé (FCFA)"]],
+    head: hasAnyPhoto
+      ? [["N°", "Désignation", "Qté", "Caractéristiques techniques", "Prix estimé (FCFA)", "Photo"]]
+      : [["N°", "Désignation", "Quantité", "Caractéristiques techniques", "Prix estimé (FCFA)"]],
     body: [
-      ...feb.items.map((it, i) => [
-        String(i + 1),
-        it.designation,
-        String(it.quantite),
-        it.caracteristiques || "-",
-        new Intl.NumberFormat("fr-FR").format(it.prixEstime),
-      ]),
-      [
-        { content: "Total estimé", colSpan: 4, styles: { fontStyle: "bold", halign: "right", fillColor: [241, 245, 249] } },
-        {
-          content: new Intl.NumberFormat("fr-FR").format(feb.totalEstime),
-          styles: { fontStyle: "bold", halign: "right", fillColor: [241, 245, 249] },
-        },
-      ],
+      ...feb.items.map((it, i) => {
+        const base = [
+          String(i + 1),
+          it.designation,
+          String(it.quantite),
+          it.caracteristiques || "-",
+          new Intl.NumberFormat("fr-FR").format(it.prixEstime),
+        ];
+        return hasAnyPhoto ? [...base, ""] : base;
+      }),
+      hasAnyPhoto
+        ? [
+            { content: "Total estimé", colSpan: 4, styles: { fontStyle: "bold", halign: "right", fillColor: [241, 245, 249] } },
+            {
+              content: new Intl.NumberFormat("fr-FR").format(feb.totalEstime),
+              styles: { fontStyle: "bold", halign: "right", fillColor: [241, 245, 249] },
+            },
+            { content: "", styles: { fillColor: [241, 245, 249] } },
+          ]
+        : [
+            { content: "Total estimé", colSpan: 4, styles: { fontStyle: "bold", halign: "right", fillColor: [241, 245, 249] } },
+            {
+              content: new Intl.NumberFormat("fr-FR").format(feb.totalEstime),
+              styles: { fontStyle: "bold", halign: "right", fillColor: [241, 245, 249] },
+            },
+          ],
     ],
-    columnStyles: {
-      0: { cellWidth: 12, halign: "center" },
-      2: { cellWidth: 22, halign: "center" },
-      4: { cellWidth: 35, halign: "right" },
-    },
+    columnStyles: hasAnyPhoto
+      ? {
+          0: { cellWidth: 10, halign: "center" },
+          2: { cellWidth: 14, halign: "center" },
+          4: { cellWidth: 32, halign: "right" },
+          5: { cellWidth: 22, halign: "center", minCellHeight: 22 },
+        }
+      : {
+          0: { cellWidth: 12, halign: "center" },
+          2: { cellWidth: 22, halign: "center" },
+          4: { cellWidth: 35, halign: "right" },
+        },
+    didDrawCell: hasAnyPhoto
+      ? (data) => {
+          if (data.section !== "body") return;
+          // Photo column is the last one (index 5); skip the totals row (last row).
+          if (data.column.index !== 5) return;
+          if (data.row.index >= feb.items.length) return;
+          const item = feb.items[data.row.index];
+          if (!item?.photo) return;
+          const cell = data.cell;
+          const padding = 1.5;
+          const size = Math.min(cell.width, cell.height) - padding * 2;
+          const x = cell.x + (cell.width - size) / 2;
+          const yTop = cell.y + (cell.height - size) / 2;
+          const fmt = item.photo.startsWith("data:image/png") ? "PNG" : "JPEG";
+          try {
+            doc.addImage(item.photo, fmt, x, yTop, size, size);
+          } catch {
+            /* ignore */
+          }
+        }
+      : undefined,
   });
 
   y = (doc as any).lastAutoTable.finalY + 6;

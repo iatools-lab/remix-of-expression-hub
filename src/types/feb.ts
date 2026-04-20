@@ -54,6 +54,8 @@ export interface FebItem {
   quantite: number;
   caracteristiques: string;
   prixEstime: number; // unit or total estimated — we store estimated total per line
+  /** Optional product photo (PNG/JPG data URL). */
+  photo?: string;
 }
 
 export type FebStatus =

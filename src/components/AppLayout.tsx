@@ -1,8 +1,8 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, FileText, PlusCircle, Users } from "lucide-react";
+import { LayoutDashboard, FileText, PlusCircle, Users, Inbox } from "lucide-react";
 import logo from "@/assets/upowa-logo.jpg";
 import { useFebStore } from "@/store/feb-store";
-import { ROLE_LABELS } from "@/types/feb";
+import { ROLE_LABELS, isValidatorRole, canActOn } from "@/types/feb";
 import {
   Select,
   SelectContent,
@@ -12,18 +12,29 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { to: "/", label: "Tableau de bord", icon: LayoutDashboard, end: true },
-  { to: "/febs", label: "Fiches FEB", icon: FileText, end: false },
-  { to: "/febs/nouveau", label: "Nouvelle FEB", icon: PlusCircle, end: false },
-];
-
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const users = useFebStore((s) => s.users);
+  const febs = useFebStore((s) => s.febs);
   const currentUserId = useFebStore((s) => s.currentUserId);
   const setCurrentUser = useFebStore((s) => s.setCurrentUser);
   const current = users.find((u) => u.id === currentUserId)!;
   const location = useLocation();
+
+  const isValidator = isValidatorRole(current.role);
+  const pendingCount = isValidator ? febs.filter((f) => canActOn(f, current.role)).length : 0;
+
+  const navItems = [
+    {
+      to: "/",
+      label: isValidator ? "Tableau de bord" : "Mes FEB",
+      icon: LayoutDashboard,
+      end: true,
+      badge: isValidator && pendingCount > 0 ? pendingCount : undefined,
+      badgeIcon: Inbox,
+    },
+    { to: "/febs", label: "Toutes les FEB", icon: FileText, end: false },
+    { to: "/febs/nouveau", label: "Nouvelle FEB", icon: PlusCircle, end: false },
+  ];
 
   return (
     <div className="min-h-screen flex bg-background">

@@ -1,40 +1,62 @@
-import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, FileText, PlusCircle, Users, Inbox } from "lucide-react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import {
+  LayoutDashboard,
+  History,
+  PlusCircle,
+  Inbox,
+  LogOut,
+} from "lucide-react";
 import logo from "@/assets/upowa-logo.jpg";
 import { useFebStore } from "@/store/feb-store";
+import { useAuthStore } from "@/store/auth-store";
 import { ROLE_LABELS, isValidatorRole, canActOn } from "@/types/feb";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const users = useFebStore((s) => s.users);
-  const febs = useFebStore((s) => s.febs);
-  const currentUserId = useFebStore((s) => s.currentUserId);
-  const setCurrentUser = useFebStore((s) => s.setCurrentUser);
-  const current = users.find((u) => u.id === currentUserId)!;
+  const navigate = useNavigate();
   const location = useLocation();
 
-  const isValidator = isValidatorRole(current.role);
-  const pendingCount = isValidator ? febs.filter((f) => canActOn(f, current.role)).length : 0;
+  const authUser = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
 
-  const navItems = [
-    {
-      to: "/",
-      label: isValidator ? "Tableau de bord" : "Mes FEB",
-      icon: LayoutDashboard,
-      end: true,
-      badge: isValidator && pendingCount > 0 ? pendingCount : undefined,
-      badgeIcon: Inbox,
-    },
-    { to: "/febs", label: "Toutes les FEB", icon: FileText, end: false },
-    { to: "/febs/nouveau", label: "Nouvelle FEB", icon: PlusCircle, end: false },
-  ];
+  const febs = useFebStore((s) => s.febs);
+  const ensureUser = useFebStore((s) => s.ensureUserFromAuth);
+  const current = useFebStore((s) => s.getCurrentUser());
+
+  // Sync the FEB store's current user with the authenticated user.
+  useEffect(() => {
+    if (authUser) ensureUser(authUser);
+  }, [authUser, ensureUser]);
+
+  const isValidator = isValidatorRole(current.role);
+  const pendingCount = isValidator
+    ? febs.filter((f) => canActOn(f, current.role)).length
+    : 0;
+
+  const navItems = isValidator
+    ? [
+        { to: "/", label: "Accueil", icon: LayoutDashboard, end: true },
+        {
+          to: "/validation",
+          label: "FEB en attente",
+          icon: Inbox,
+          end: false,
+          badge: pendingCount > 0 ? pendingCount : undefined,
+        },
+        { to: "/historique", label: "Historique FEB", icon: History, end: false },
+        { to: "/febs/nouveau", label: "Nouvelle FEB", icon: PlusCircle, end: false },
+      ]
+    : [
+        { to: "/", label: "Tableau de bord", icon: LayoutDashboard, end: true },
+        { to: "/historique", label: "Historique FEB", icon: History, end: false },
+        { to: "/febs/nouveau", label: "Nouvelle FEB", icon: PlusCircle, end: false },
+      ];
+
+  function handleLogout() {
+    logout();
+    navigate("/login", { replace: true });
+  }
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -69,7 +91,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               >
                 <Icon className="w-4 h-4" />
                 <span className="flex-1">{item.label}</span>
-                {item.badge !== undefined && (
+                {"badge" in item && item.badge !== undefined && (
                   <span className="bg-warning text-warning-foreground text-[11px] font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center">
                     {item.badge}
                   </span>
@@ -79,38 +101,37 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {/* Role switcher */}
+        {/* User block */}
         <div className="p-3 border-t border-sidebar-border space-y-2">
-          <div className="flex items-center gap-2 px-2 text-xs text-sidebar-foreground/60 uppercase tracking-wider font-semibold">
-            <Users className="w-3 h-3" />
-            Connecté en tant que
+          <div className="px-2.5 py-2 rounded-md bg-sidebar-accent/50">
+            <p className="font-medium text-white text-sm leading-tight truncate">
+              {current.name}
+            </p>
+            <p className="text-[11px] text-sidebar-foreground/70 mt-0.5 truncate">
+              {ROLE_LABELS[current.role]}
+            </p>
+            {authUser && (
+              <p className="text-[10px] text-sidebar-foreground/50 mt-0.5 truncate font-mono">
+                {authUser.email}
+              </p>
+            )}
           </div>
-          <Select value={currentUserId} onValueChange={setCurrentUser}>
-            <SelectTrigger className="bg-sidebar-accent border-sidebar-border text-white hover:bg-sidebar-accent/80">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {users.map((u) => (
-                <SelectItem key={u.id} value={u.id}>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{u.name}</span>
-                    <span className="text-xs text-muted-foreground">{ROLE_LABELS[u.role]}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="px-2 py-1.5 rounded-md bg-sidebar-accent/50 text-xs text-sidebar-foreground/80">
-            <span className="font-medium text-white">{current.name}</span>
-            <br />
-            <span className="text-[11px]">{ROLE_LABELS[current.role]}</span>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-xs font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-white transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Se déconnecter
+          </button>
         </div>
       </aside>
 
       {/* Main */}
       <main className="flex-1 overflow-auto">
-        <div className="max-w-[1400px] mx-auto p-8 animate-fade-in" key={location.pathname}>
+        <div
+          className="max-w-[1400px] mx-auto p-8 animate-fade-in"
+          key={location.pathname}
+        >
           {children}
         </div>
       </main>

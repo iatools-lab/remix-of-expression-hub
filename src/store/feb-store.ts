@@ -8,6 +8,7 @@ import {
   User,
   nextPendingStatus,
 } from "@/types/feb";
+import { useSignatureStore } from "@/store/signature-store";
 
 const DEFAULT_USERS: User[] = [
   { id: "u1", name: "Awa Mbarga", role: "demandeur", department: "Supply Chains and Operations", email: "awa@upowa.com" },
@@ -132,6 +133,7 @@ export const useFebStore = create<FebStore>()(
         }),
       approveFeb: (id, comment) => {
         const user = get().getCurrentUser();
+        const sig = useSignatureStore.getState().getSignature(user.email);
         set({
           febs: get().febs.map((f) => {
             if (f.id !== id) return f;
@@ -141,7 +143,14 @@ export const useFebStore = create<FebStore>()(
               status: nextStatus,
               validations: [
                 ...f.validations,
-                { role: user.role, userName: user.name, action: "approuvee", comment, date: new Date().toISOString() },
+                {
+                  role: user.role,
+                  userName: user.name,
+                  action: "approuvee",
+                  comment,
+                  date: new Date().toISOString(),
+                  signature: sig ? { type: sig.type, value: sig.value } : undefined,
+                },
               ],
               updatedAt: new Date().toISOString(),
             };

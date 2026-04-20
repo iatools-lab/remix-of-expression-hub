@@ -122,18 +122,65 @@ export function exportFebPdf(feb: Feb) {
   const valPole = feb.validations.find((v) => v.role === "responsable_pole");
   const valRpaf = feb.validations.find((v) => v.role === "rpaf");
 
+  // Cells: only show name + status text. Signatures are drawn afterward via didDrawCell.
+  const cellFor = (v?: { userName: string; action: "approuvee" | "rejetee" }, fallbackPending = "En attente") => {
+    if (!v) return fallbackPending;
+    return `${v.userName}\n${v.action === "approuvee" ? "✓ Validé" : "✗ Rejeté"}`;
+  };
+
   const sigDataRow = [
     feb.demandeurName,
-    valTech ? `${valTech.userName}\n${valTech.action === "approuvee" ? "✓ Validé" : "✗ Rejeté"}` : feb.needsTechnicalReview ? "En attente" : "N/A",
-    valPole ? `${valPole.userName}\n${valPole.action === "approuvee" ? "✓ Validé" : "✗ Rejeté"}` : "En attente",
-    valRpaf ? `${valRpaf.userName}\n${valRpaf.action === "approuvee" ? "✓ Validé" : "✗ Rejeté"}` : "En attente",
+    cellFor(valTech, feb.needsTechnicalReview ? "En attente" : "N/A"),
+    cellFor(valPole),
+    cellFor(valRpaf),
+  ];
+
+  // Map column index → validation step (or null for the demandeur, which has no signature image)
+  const colToValidation: Array<typeof valTech | undefined | null> = [
+    null, // demandeur: text only
+    valTech,
+    valPole,
+    valRpaf,
   ];
 
   autoTable(doc, {
     startY: y + 2,
     theme: "grid",
-    styles: { fontSize: 8, cellPadding: 3, valign: "middle", halign: "center", minCellHeight: 18 },
+    styles: { fontSize: 8, cellPadding: 3, valign: "top", halign: "center", minCellHeight: 30 },
     body: [sigRow, sigDataRow],
+    didDrawCell: (data) => {
+      // Only data row (index 1), and only when an approved signature exists
+      if (data.section !== "body" || data.row.index !== 1) return;
+      const v = colToValidation[data.column.index];
+      if (!v || v.action !== "approuvee" || !v.signature) return;
+
+      const cell = data.cell;
+      const padding = 2;
+      const maxW = cell.width - padding * 2;
+      const sigAreaH = 12; // mm reserved for signature, sits above the name text
+      const x = cell.x + padding;
+      const yTop = cell.y + padding;
+
+      if (v.signature.type === "drawn") {
+        try {
+          // Fit centered within the available signature area
+          doc.addImage(v.signature.value, "PNG", x, yTop, maxW, sigAreaH);
+        } catch {
+          /* ignore broken image data */
+        }
+      } else {
+        doc.setFont("times", "italic");
+        doc.setFontSize(14);
+        doc.setTextColor(15, 23, 42);
+        doc.text(v.signature.value, cell.x + cell.width / 2, yTop + sigAreaH - 2, {
+          align: "center",
+        });
+        // restore defaults
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(20, 20, 30);
+      }
+    },
   });
 
   y = (doc as any).lastAutoTable.finalY + 4;

@@ -81,6 +81,12 @@ export interface ValidationStep {
   action: "approuvee" | "rejetee";
   comment?: string;
   date: string; // ISO
+  /** Snapshot of the signatory's signature at the time of validation. */
+  signature?: {
+    type: "drawn" | "typed";
+    /** PNG data URL (drawn) or displayed name (typed). */
+    value: string;
+  };
 }
 
 export interface Feb {

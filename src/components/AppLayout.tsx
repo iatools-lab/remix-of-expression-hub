@@ -6,6 +6,7 @@ import {
   PlusCircle,
   Inbox,
   LogOut,
+  PenLine,
 } from "lucide-react";
 import logo from "@/assets/upowa-logo.jpg";
 import { useFebStore } from "@/store/feb-store";
@@ -46,6 +47,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         },
         { to: "/historique", label: "Historique FEB", icon: History, end: false },
         { to: "/febs/nouveau", label: "Nouvelle FEB", icon: PlusCircle, end: false },
+        { to: "/signature", label: "Ma signature", icon: PenLine, end: false },
       ]
     : [
         { to: "/", label: "Tableau de bord", icon: LayoutDashboard, end: true },

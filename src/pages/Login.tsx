@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { LogIn, ShieldCheck } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import logo from "@/assets/upowa-logo.jpg";
 import { useAuthStore } from "@/store/auth-store";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ export default function Login() {
   const user = useAuthStore((s) => s.user);
   const login = useAuthStore((s) => s.login);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +21,9 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const res = login(email, password);
+    // Demo: passwordless login. We pass a placeholder password to satisfy the store's
+    // existing validation (≥ 4 chars) without exposing a password field to the user.
+    const res = login(email, "upowa-passwordless");
     setLoading(false);
     if (res.ok !== true) {
       setError(res.error);
@@ -48,7 +49,7 @@ export default function Login() {
         <div className="rounded-xl border border-border bg-card p-7 shadow-sm">
           <h1 className="text-xl font-semibold text-foreground tracking-tight">Connexion</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Accès réservé aux collaborateurs upöwa.
+            Saisissez votre adresse e-mail professionnelle pour accéder à la plateforme.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-6">
@@ -62,17 +63,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">Mot de passe</label>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
+                autoFocus
                 required
               />
             </div>
@@ -83,9 +74,9 @@ export default function Login() {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              <LogIn className="w-4 h-4 mr-1.5" />
-              {loading ? "Connexion..." : "Se connecter"}
+            <Button type="submit" className="w-full" disabled={loading || !email}>
+              {loading ? "Connexion..." : "Continuer"}
+              <ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
           </form>
 
@@ -97,10 +88,6 @@ export default function Login() {
             </p>
           </div>
         </div>
-
-        <p className="text-center text-[11px] text-muted-foreground mt-6">
-          Démo · n'importe quel mot de passe ≥ 4 caractères est accepté
-        </p>
       </div>
     </div>
   );

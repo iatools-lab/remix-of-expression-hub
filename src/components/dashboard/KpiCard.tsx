@@ -1,38 +1,37 @@
 import { LucideIcon } from "lucide-react";
 
-type Accent = "info" | "warning" | "success" | "destructive" | "primary";
+type Accent = "info" | "warning" | "success" | "destructive" | "primary" | "neutral";
 
-const ACCENT_CLASSES: Record<Accent, string> = {
-  info: "bg-info-soft text-info",
-  warning: "bg-warning-soft text-warning",
-  success: "bg-success-soft text-success",
-  destructive: "bg-destructive-soft text-destructive",
-  primary: "bg-primary/10 text-primary",
+const ACCENT_DOT: Record<Accent, string> = {
+  info: "bg-info",
+  warning: "bg-warning",
+  success: "bg-success",
+  destructive: "bg-destructive",
+  primary: "bg-primary",
+  neutral: "bg-muted-foreground",
 };
 
 interface KpiCardProps {
-  icon: LucideIcon;
+  icon?: LucideIcon;
   label: string;
   value: number | string;
-  accent: Accent;
+  accent?: Accent;
   suffix?: string;
+  hint?: string;
 }
 
-export function KpiCard({ icon: Icon, label, value, accent, suffix }: KpiCardProps) {
+export function KpiCard({ label, value, accent = "neutral", suffix, hint }: KpiCardProps) {
   return (
-    <div className="stat-card">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground font-medium">{label}</p>
-          <p className="text-3xl font-bold mt-2 text-foreground">
-            {value}
-            {suffix && <span className="text-base font-medium text-muted-foreground ml-1">{suffix}</span>}
-          </p>
-        </div>
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${ACCENT_CLASSES[accent]}`}>
-          <Icon className="w-5 h-5" />
-        </div>
+    <div className="bg-card rounded-lg border border-border p-5 transition-colors hover:border-foreground/20">
+      <div className="flex items-center gap-2 mb-3">
+        <span className={`w-1.5 h-1.5 rounded-full ${ACCENT_DOT[accent]}`} />
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</p>
       </div>
+      <p className="text-3xl font-semibold text-foreground tabular-nums tracking-tight">
+        {value}
+        {suffix && <span className="text-sm font-normal text-muted-foreground ml-1.5">{suffix}</span>}
+      </p>
+      {hint && <p className="text-xs text-muted-foreground mt-2">{hint}</p>}
     </div>
   );
 }

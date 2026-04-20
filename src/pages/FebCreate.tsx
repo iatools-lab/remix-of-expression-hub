@@ -42,6 +42,16 @@ export default function FebCreate() {
 
   const removeItem = (id: string) => setItems(items.filter((it) => it.id !== id));
 
+  const handleItemPhoto = async (id: string, file: File | undefined) => {
+    if (!file) return;
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file, 800, "image/jpeg", 0.8);
+      updateItem(id, { photo: dataUrl });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Image invalide");
+    }
+  };
+
   const handleSubmit = (submit: boolean) => {
     if (!natureBesoin.trim()) return toast.error("La nature du besoin est obligatoire.");
     if (!delaiLivraison) return toast.error("Le délai de livraison est obligatoire.");
@@ -146,7 +156,7 @@ export default function FebCreate() {
           {items.map((it, idx) => (
             <div key={it.id} className="grid grid-cols-12 gap-3 items-start p-3 rounded-lg border border-border bg-muted/30">
               <div className="col-span-12 md:col-span-1 text-sm font-bold text-muted-foreground pt-2">#{idx + 1}</div>
-              <div className="col-span-12 md:col-span-4">
+              <div className="col-span-12 md:col-span-3">
                 <Label className="text-xs">Désignation *</Label>
                 <Input
                   value={it.designation}
@@ -186,6 +196,17 @@ export default function FebCreate() {
                   className="mt-1 bg-card"
                 />
               </div>
+
+              {/* Photo column */}
+              <div className="col-span-10 md:col-span-1">
+                <Label className="text-xs">Photo</Label>
+                <ItemPhotoField
+                  photo={it.photo}
+                  onChange={(file) => handleItemPhoto(it.id, file)}
+                  onRemove={() => updateItem(it.id, { photo: undefined })}
+                />
+              </div>
+
               <div className="col-span-2 md:col-span-1 flex justify-end pt-6">
                 <Button
                   type="button"

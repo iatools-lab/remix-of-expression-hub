@@ -68,7 +68,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 }
               >
                 <Icon className="w-4 h-4" />
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.badge !== undefined && (
+                  <span className="bg-warning text-warning-foreground text-[11px] font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center">
+                    {item.badge}
+                  </span>
+                )}
               </NavLink>
             );
           })}

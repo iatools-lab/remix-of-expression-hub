@@ -7,6 +7,8 @@ import {
   Inbox,
   LogOut,
   PenLine,
+  Building2,
+  ShoppingCart,
 } from "lucide-react";
 import logo from "@/assets/upowa-logo.jpg";
 import { useFebStore } from "@/store/feb-store";
@@ -47,6 +49,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         },
         { to: "/historique", label: "Historique FEB", icon: History, end: false },
         { to: "/febs/nouveau", label: "Nouvelle FEB", icon: PlusCircle, end: false },
+        { to: "/bons-achat", label: "Bons d'Achat", icon: ShoppingCart, end: false },
+        { to: "/prestataires", label: "Prestataires", icon: Building2, end: false },
         { to: "/signature", label: "Ma signature", icon: PenLine, end: false },
       ]
     : [

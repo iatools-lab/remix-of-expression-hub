@@ -503,3 +503,244 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRESTATAIRES (FOURNISSEURS)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Catégorie d'achat (ex: "Informatique", "EPI", "Mobilier"…). Référentiel libre,
+/// géré par les administrateurs. Une catégorie peut être associée à plusieurs
+/// prestataires (M-N via `SupplierCategoryLink`).
+model SupplierCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(120)
+  /// Description courte, optionnelle.
+  description String? @db.VarChar(500)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  suppliers SupplierCategoryLink[]
+
+  @@map("supplier_categories")
+}
+
+/// Prestataire (fournisseur) référencé. Permet de capitaliser sur les partenaires
+/// récurrents et d'éviter la ressaisie sur chaque FEB / Bon d'Achat.
+model Supplier {
+  id String @id @default(uuid()) @db.Uuid
+
+  // ── Identité de base ──────────────────────────────────────────────────────
+  /// Raison sociale complète (ex: "DOVV SARL").
+  raisonSociale String  @unique @map("raison_sociale") @db.VarChar(200)
+  /// Sigle ou nom commercial court (ex: "DOVV").
+  sigle         String? @db.VarChar(60)
+  /// Numéro d'Identification Unique (Cameroun).
+  niu           String? @unique @db.VarChar(40)
+  /// Registre du Commerce et du Crédit Mobilier.
+  rccm          String? @db.VarChar(60)
+  adresse       String? @db.VarChar(300)
+  ville         String? @db.VarChar(120)
+  pays          String  @default("Cameroun") @db.VarChar(80)
+  telephone     String? @db.VarChar(40)
+  email         String? @db.VarChar(255)
+  siteWeb       String? @map("site_web") @db.VarChar(255)
+
+  // ── Contact commercial ────────────────────────────────────────────────────
+  contactNom        String? @map("contact_nom") @db.VarChar(120)
+  contactFonction   String? @map("contact_fonction") @db.VarChar(120)
+  contactTelephone  String? @map("contact_telephone") @db.VarChar(40)
+  contactEmail      String? @map("contact_email") @db.VarChar(255)
+
+  // ── Évaluation & cycle de vie ─────────────────────────────────────────────
+  status SupplierStatus @default(ACTIF)
+  /// Note qualitative interne (mise à jour manuellement ou après chaque BA clôturé).
+  rating SupplierRating?
+  /// Note libre (raison de blacklist, points forts, etc.).
+  notes  String?        @db.Text
+
+  /// Logo optionnel du prestataire (PNG/JPG en base via `FileAsset`).
+  logoId String? @unique @map("logo_id") @db.Uuid
+
+  /// Soft delete — on ne supprime jamais physiquement (audit + intégrité des BA).
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  logo            FileAsset?             @relation("SupplierLogo", fields: [logoId], references: [id], onDelete: SetNull)
+  categories      SupplierCategoryLink[]
+  purchaseOrders  PurchaseOrder[]
+  purchaseOrderLines PurchaseOrderLine[]
+
+  @@index([status])
+  @@index([deletedAt])
+  @@map("suppliers")
+}
+
+/// Table de jointure Prestataire ↔ Catégorie (M-N).
+model SupplierCategoryLink {
+  supplierId String @map("supplier_id") @db.Uuid
+  categoryId String @map("category_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  supplier Supplier         @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  category SupplierCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([supplierId, categoryId])
+  @@index([categoryId])
+  @@map("supplier_category_links")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BONS D'ACHAT (BA)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Bon d'Achat (BA) — créé indépendamment d'une FEB (achat récurrent ou direct).
+/// Workflow : BROUILLON → EN_ATTENTE_RPAF → APPROUVE → ENVOYE → RECEPTIONNE → CLOTURE.
+/// Un BA peut regrouper plusieurs prestataires : chaque LIGNE pointe vers son propre
+/// prestataire. Le champ `primarySupplierId` reste indicatif (prestataire dominant
+/// pour l'affichage des listes).
+model PurchaseOrder {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Numéro lisible : "BA-001/15-04-2025".
+  numero String @unique @db.VarChar(40)
+
+  /// Objet / motif de l'achat (équivalent du `natureBesoin` côté FEB).
+  objet       String  @db.VarChar(300)
+  description String? @db.Text
+
+  status PurchaseOrderStatus @default(BROUILLON)
+
+  /// Devise (par défaut FCFA). Permet d'enregistrer les BA internationaux.
+  devise String @default("XAF") @db.VarChar(8)
+
+  /// Total HT calculé à partir des lignes (snapshot à la soumission). Decimal pour précision.
+  totalHt  Decimal @map("total_ht") @db.Decimal(14, 2)
+  /// TVA totale appliquée (FCFA). Optionnelle.
+  totalTva Decimal @default(0) @map("total_tva") @db.Decimal(14, 2)
+  /// Total TTC = totalHt + totalTva. Stocké pour éviter les recalculs/divergences.
+  totalTtc Decimal @map("total_ttc") @db.Decimal(14, 2)
+
+  /// Date prévisionnelle de livraison.
+  dateLivraisonPrevue DateTime? @map("date_livraison_prevue") @db.Date
+  /// Date effective de livraison (renseignée à la réception).
+  dateLivraisonReelle DateTime? @map("date_livraison_reelle") @db.Date
+  /// Conditions de paiement libres (ex: "30 jours fin de mois").
+  conditionsPaiement  String?   @map("conditions_paiement") @db.VarChar(255)
+
+  // ── Acteurs ───────────────────────────────────────────────────────────────
+  createdById   String @map("created_by_id") @db.Uuid
+  createdByName String @map("created_by_name") @db.VarChar(120)
+
+  /// Prestataire principal (informatif quand plusieurs fournisseurs sur les lignes).
+  primarySupplierId String? @map("primary_supplier_id") @db.Uuid
+
+  /// Soft delete (un BA n'est jamais physiquement supprimé).
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  submittedAt DateTime? @map("submitted_at") @db.Timestamptz(6)
+  approvedAt  DateTime? @map("approved_at") @db.Timestamptz(6)
+  sentAt      DateTime? @map("sent_at") @db.Timestamptz(6)
+  receivedAt  DateTime? @map("received_at") @db.Timestamptz(6)
+  closedAt    DateTime? @map("closed_at") @db.Timestamptz(6)
+
+  // Relations
+  createdBy       User                    @relation("POCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  primarySupplier Supplier?               @relation(fields: [primarySupplierId], references: [id], onDelete: SetNull)
+  lines           PurchaseOrderLine[]
+  approvals       PurchaseOrderApproval[]
+  pdfExports      PurchaseOrderPdfExport[]
+
+  @@index([status])
+  @@index([createdById])
+  @@index([primarySupplierId])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("purchase_orders")
+}
+
+/// Ligne d'un Bon d'Achat. Chaque ligne porte SON prestataire (multi-fournisseurs autorisé).
+model PurchaseOrderLine {
+  id              String @id @default(uuid()) @db.Uuid
+  purchaseOrderId String @map("purchase_order_id") @db.Uuid
+  /// Position dans le bon (1, 2, 3…).
+  position        Int    @default(1)
+
+  designation      String  @db.VarChar(300)
+  caracteristiques String  @default("") @db.VarChar(500)
+  quantite         Decimal @db.Decimal(14, 3)
+  unite            String  @default("u") @db.VarChar(20)
+
+  /// Prix unitaire HT.
+  prixUnitaireHt Decimal @map("prix_unitaire_ht") @db.Decimal(14, 2)
+  /// Taux de TVA appliqué à la ligne (ex: 19.25). 0 si exonéré.
+  tauxTva        Decimal @default(0) @map("taux_tva") @db.Decimal(5, 2)
+  /// Total ligne HT = quantite * prixUnitaireHt (snapshot calculé côté app).
+  totalHt        Decimal @map("total_ht") @db.Decimal(14, 2)
+  /// Total ligne TTC.
+  totalTtc       Decimal @map("total_ttc") @db.Decimal(14, 2)
+
+  /// Prestataire de cette ligne (peut différer de la ligne d'à côté).
+  supplierId String @map("supplier_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  supplier      Supplier      @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  @@unique([purchaseOrderId, position])
+  @@index([purchaseOrderId])
+  @@index([supplierId])
+  @@map("purchase_order_lines")
+}
+
+/// Étape de validation d'un BA (RPAF). Immutable — on ajoute une nouvelle ligne
+/// pour chaque action (approbation, rejet, demande de modification).
+model PurchaseOrderApproval {
+  id              String @id @default(uuid()) @db.Uuid
+  purchaseOrderId String @map("purchase_order_id") @db.Uuid
+
+  /// Rôle qui a posé l'action (snapshot — toujours RPAF dans le workflow actuel,
+  /// mais on garde le champ pour évoluer vers un circuit multi-niveaux).
+  role     Role
+  userId   String?          @map("user_id") @db.Uuid
+  userName String           @map("user_name") @db.VarChar(120)
+  action   ValidationAction
+  comment  String?          @db.Text
+
+  // Snapshot signature (même logique que FebValidation)
+  signatureType    SignatureType? @map("signature_type")
+  signatureTyped   String?        @map("signature_typed") @db.VarChar(120)
+  signatureImageId String?        @unique @map("signature_image_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  purchaseOrder  PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  signatureImage FileAsset?    @relation("POApprovalSignature", fields: [signatureImageId], references: [id], onDelete: SetNull)
+
+  @@index([purchaseOrderId, createdAt])
+  @@index([userId])
+  @@map("purchase_order_approvals")
+}
+
+/// Trace chaque génération de PDF d'un Bon d'Achat (audit + ré-téléchargement).
+model PurchaseOrderPdfExport {
+  id              String   @id @default(uuid()) @db.Uuid
+  purchaseOrderId String   @map("purchase_order_id") @db.Uuid
+  exportedById    String   @map("exported_by_id") @db.Uuid
+  fileId          String   @unique @map("file_id") @db.Uuid
+  exportedAt      DateTime @default(now()) @map("exported_at") @db.Timestamptz(6)
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  file          FileAsset     @relation("PurchaseOrderPdf", fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseOrderId])
+  @@map("purchase_order_pdf_exports")
+}

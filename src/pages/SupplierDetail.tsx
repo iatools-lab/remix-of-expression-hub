@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Pencil, Building2, Mail, Phone, Globe, MapPin, Star, FileText } from "lucide-react";
 import { useSupplierStore } from "@/store/supplier-store";

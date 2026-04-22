@@ -189,6 +189,9 @@ model User {
   auditLogs           AuditLog[]
   // Rôles "spécifiques par département" que cet utilisateur occupe
   signatoryRoles      DepartmentSignatory[]
+  // Bons d'achat
+  purchaseOrdersCreated  PurchaseOrder[]         @relation("POCreatedBy")
+  purchaseOrderApprovals PurchaseOrderApproval[]
 
   @@index([role])
   @@index([departmentId])

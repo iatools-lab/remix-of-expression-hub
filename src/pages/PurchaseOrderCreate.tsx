@@ -23,7 +23,11 @@ import { toast } from "@/hooks/use-toast";
 
 export default function PurchaseOrderCreate() {
   const navigate = useNavigate();
-  const suppliers = useSupplierStore((s) => s.suppliers.filter((x) => x.status === "actif"));
+  const allSuppliers = useSupplierStore((s) => s.suppliers);
+  const suppliers = useMemo(
+    () => allSuppliers.filter((x) => x.status === "actif"),
+    [allSuppliers]
+  );
   const createOrder = usePurchaseOrderStore((s) => s.createOrder);
 
   const [objet, setObjet] = useState("");

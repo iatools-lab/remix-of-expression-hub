@@ -67,7 +67,40 @@ enum FileKind {
   SIGNATURE
   ITEM_PHOTO
   FEB_PDF
+  PURCHASE_ORDER_PDF
+  SUPPLIER_LOGO
   ATTACHMENT
+}
+
+/// État d'un Bon d'Achat (BA) dans son cycle de vie.
+/// Workflow : BROUILLON → EN_ATTENTE_RPAF → (APPROUVE | REJETE)
+///            APPROUVE → ENVOYE → RECEPTIONNE → CLOTURE
+///            (à tout moment avant CLOTURE) → ANNULE
+enum PurchaseOrderStatus {
+  BROUILLON
+  EN_ATTENTE_RPAF
+  APPROUVE
+  ENVOYE
+  RECEPTIONNE_PARTIEL
+  RECEPTIONNE
+  CLOTURE
+  REJETE
+  ANNULE
+}
+
+/// Statut commercial d'un prestataire.
+enum SupplierStatus {
+  ACTIF
+  INACTIF
+  BLACKLISTE
+}
+
+/// Évaluation qualitative d'un prestataire (mise à jour après chaque BA clôturé).
+enum SupplierRating {
+  EXCELLENT
+  BON
+  MOYEN
+  MAUVAIS
 }
 
 /// Niveau de gravité d'une entrée d'audit log.

@@ -13,9 +13,12 @@ import { fr } from "date-fns/locale";
 export default function SupplierDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const supplier = useSupplierStore((s) => s.suppliers.find((x) => x.id === id));
-  const orders = usePurchaseOrderStore((s) =>
-    s.orders.filter((o) => o.lines.some((l) => l.supplierId === id))
+  const suppliers = useSupplierStore((s) => s.suppliers);
+  const allOrders = usePurchaseOrderStore((s) => s.orders);
+  const supplier = useMemo(() => suppliers.find((x) => x.id === id), [suppliers, id]);
+  const orders = useMemo(
+    () => allOrders.filter((o) => o.lines.some((l) => l.supplierId === id)),
+    [allOrders, id]
   );
 
   if (!supplier) {

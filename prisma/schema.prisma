@@ -457,10 +457,13 @@ model FileAsset {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations inverses (1-to-1 dans chaque cas)
-  signature           Signature?     @relation("SignatureImage")
-  itemPhoto           FebItem?       @relation("ItemPhoto")
-  validationSignature FebValidation? @relation("ValidationSignature")
-  febPdf              FebPdfExport?  @relation("FebPdf")
+  signature           Signature?              @relation("SignatureImage")
+  itemPhoto           FebItem?                @relation("ItemPhoto")
+  validationSignature FebValidation?          @relation("ValidationSignature")
+  febPdf              FebPdfExport?           @relation("FebPdf")
+  supplierLogo        Supplier?               @relation("SupplierLogo")
+  purchaseOrderPdf    PurchaseOrderPdfExport? @relation("PurchaseOrderPdf")
+  approvalSignature   PurchaseOrderApproval?  @relation("POApprovalSignature")
 
   @@index([kind])
   @@index([sha256])

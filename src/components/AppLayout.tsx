@@ -38,8 +38,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     ? febs.filter((f) => canActOn(f, current.role)).length
     : 0;
 
-  // Roles that can see purchase orders & suppliers (only supply_chain and admin)
-  const canSeePOAndSuppliers = current.role === "supply_chain" || current.role === "admin";
+  // Roles that can see purchase orders & suppliers
+  const canSeePOAndSuppliers = current.role === "supply_chain" || current.role === "admin" || current.role === "super_admin";
+  const isSuperAdmin = current.role === "super_admin";
 
   const navItems = isValidator
     ? [
@@ -60,6 +61,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             ]
           : []),
         { to: "/signature", label: "Ma signature", icon: PenLine, end: false },
+        ...(isSuperAdmin
+          ? [{ to: "/administration", label: "Administration", icon: Shield, end: false }]
+          : []),
       ]
     : [
         { to: "/", label: "Tableau de bord", icon: LayoutDashboard, end: true },

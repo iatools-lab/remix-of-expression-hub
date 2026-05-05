@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useSupplierStore } from "@/store/supplier-store";
+import { useFebStore } from "@/store/feb-store";
 import { usePurchaseOrderStore, formatXAF } from "@/store/purchase-order-store";
 import {
   PurchaseOrderLine,

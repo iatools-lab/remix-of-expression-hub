@@ -51,12 +51,6 @@ interface FebStore {
     fournisseurPotentiel: string;
     needsTechnicalReview: boolean;
     submit: boolean;
-    projectName?: string;
-    febDetails?: string;
-    receivedVia?: ReceivedVia;
-    budgetSpend?: number;
-    assignee?: string;
-    historySpend?: number;
   }) => Feb;
   updateFeb: (id: string, patch: Partial<Feb>) => void;
   submitFeb: (id: string) => void;
@@ -97,7 +91,7 @@ export const useFebStore = create<FebStore>()(
         const s = get();
         return s.users.find((u) => u.id === s.currentUserId) ?? s.users[0];
       },
-      createFeb: ({ natureBesoin, departement, items, delaiLivraison, fournisseurPotentiel, needsTechnicalReview, submit, projectName, febDetails, receivedVia, budgetSpend, assignee, historySpend }) => {
+      createFeb: ({ natureBesoin, departement, items, delaiLivraison, fournisseurPotentiel, needsTechnicalReview, submit }) => {
         const user = get().getCurrentUser();
         const totalEstime = items.reduce((acc, it) => acc + (Number(it.prixEstime) || 0), 0);
         const numero = generateNumero(get().febs.length, departement);
@@ -119,12 +113,6 @@ export const useFebStore = create<FebStore>()(
           createdAt: now,
           updatedAt: now,
           receivedDate: now,
-          projectName,
-          febDetails,
-          receivedVia,
-          budgetSpend,
-          assignee,
-          historySpend,
         };
         const finalFeb: Feb = submit
           ? { ...draft, status: nextPendingStatus(draft) }

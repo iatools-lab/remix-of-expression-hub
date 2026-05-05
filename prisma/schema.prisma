@@ -35,6 +35,7 @@ enum Role {
   RPAF // Responsable Pôle Administratif & Financier
   SUPPLY_CHAIN // Réception au pôle Opérations & Supply Chain
   ADMIN
+  SUPER_ADMIN // Accès total à la plateforme + gestion des utilisateurs
 }
 
 /// État d'une FEB dans son circuit de validation.

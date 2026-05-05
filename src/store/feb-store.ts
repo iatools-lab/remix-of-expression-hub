@@ -51,6 +51,12 @@ interface FebStore {
     fournisseurPotentiel: string;
     needsTechnicalReview: boolean;
     submit: boolean;
+    projectName?: string;
+    febDetails?: string;
+    receivedVia?: ReceivedVia;
+    budgetSpend?: number;
+    assignee?: string;
+    historySpend?: number;
   }) => Feb;
   updateFeb: (id: string, patch: Partial<Feb>) => void;
   submitFeb: (id: string) => void;

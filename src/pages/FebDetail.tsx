@@ -152,13 +152,6 @@ export default function FebDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Items + Actions */}
         <div className="lg:col-span-2 space-y-6">
-          {/* FEB Details */}
-          {feb.febDetails && (
-            <section className="card-elevated p-6">
-              <h2 className="font-semibold text-foreground mb-2">Détails de la FEB</h2>
-              <p className="text-sm text-muted-foreground whitespace-pre-line">{feb.febDetails}</p>
-            </section>
-          )}
 
           {/* Items table */}
           <section className="card-elevated p-6">
@@ -402,11 +395,7 @@ export default function FebDetail() {
             <MetaRow label="Créée le" value={format(new Date(feb.createdAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })} />
             <MetaRow label="Mise à jour" value={format(new Date(feb.updatedAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })} />
             {feb.receivedDate && <MetaRow label="Reçue le" value={format(new Date(feb.receivedDate), "dd MMM yyyy", { locale: fr })} />}
-            {feb.receivedVia && <MetaRow label="Reçue via" value={RECEIVED_VIA_LABELS[feb.receivedVia]} />}
-            {feb.assignee && <MetaRow label="Assignée" value={feb.assignee} />}
             <MetaRow label="Validation technique" value={feb.needsTechnicalReview ? "Requise" : "Non requise"} />
-            {feb.budgetSpend != null && feb.budgetSpend > 0 && <MetaRow label="Budget alloué" value={formatXAF(feb.budgetSpend)} />}
-            {feb.historySpend != null && feb.historySpend > 0 && <MetaRow label="Historique dépenses" value={formatXAF(feb.historySpend)} />}
           </section>
         </div>
       </div>

@@ -186,7 +186,8 @@ export default function FebDetail() {
             </div>
           </section>
 
-          {/* Post-validation tracking */}
+          {/* Post-validation tracking — visible only for supply_chain and admin */}
+          {(user.role === "supply_chain" || user.role === "admin") && (
           <section className="card-elevated p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-foreground">Suivi approvisionnement</h2>
@@ -281,6 +282,7 @@ export default function FebDetail() {
               </div>
             )}
           </section>
+          )}
 
           {/* Actions */}
           {(isOwnerDraft || canValidate) && (

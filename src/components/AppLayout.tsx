@@ -37,6 +37,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     ? febs.filter((f) => canActOn(f, current.role)).length
     : 0;
 
+  // Roles that can see purchase orders & suppliers (only supply_chain and admin)
+  const canSeePOAndSuppliers = current.role === "supply_chain" || current.role === "admin";
+
   const navItems = isValidator
     ? [
         { to: "/", label: "Accueil", icon: LayoutDashboard, end: true },
@@ -49,8 +52,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         },
         { to: "/historique", label: "Historique FEB", icon: History, end: false },
         { to: "/febs/nouveau", label: "Nouvelle FEB", icon: PlusCircle, end: false },
-        { to: "/bons-achat", label: "Bons d'Achat", icon: ShoppingCart, end: false },
-        { to: "/prestataires", label: "Prestataires", icon: Building2, end: false },
+        ...(canSeePOAndSuppliers
+          ? [
+              { to: "/bons-achat", label: "Bons d'Achat", icon: ShoppingCart, end: false },
+              { to: "/prestataires", label: "Prestataires", icon: Building2, end: false },
+            ]
+          : []),
         { to: "/signature", label: "Ma signature", icon: PenLine, end: false },
       ]
     : [

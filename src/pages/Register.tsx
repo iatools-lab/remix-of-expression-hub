@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-export default function Login() {
+export default function Register() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const login = useAuthStore((s) => s.login);
+  const register = useAuthStore((s) => s.register);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -23,14 +24,14 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const res = login(email, password);
+    const res = register(email, name, password);
     setLoading(false);
     if (res.ok !== true) {
       setError(res.error);
       return;
     }
-    toast.success("Connexion réussie");
-    navigate("/", { replace: true });
+    toast.success("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
+    navigate("/login", { replace: true });
   }
 
   return (
@@ -47,12 +48,25 @@ export default function Login() {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-7 shadow-sm">
-          <h1 className="text-xl font-semibold text-foreground tracking-tight">Connexion</h1>
+          <h1 className="text-xl font-semibold text-foreground tracking-tight">Créer un compte</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Connectez-vous avec votre adresse e-mail professionnelle.
+            Renseignez vos informations pour accéder à la plateforme.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-6">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">Nom complet</label>
+              <Input
+                type="text"
+                placeholder="Prénom Nom"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="name"
+                autoFocus
+                required
+              />
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-foreground">Adresse e-mail</label>
               <Input
@@ -61,29 +75,21 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
-                autoFocus
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-foreground">Mot de passe</label>
-                <Link
-                  to="/mot-de-passe-oublie"
-                  className="text-xs text-primary hover:underline"
-                >
-                  Mot de passe oublié ?
-                </Link>
-              </div>
+              <label className="text-xs font-medium text-foreground">Mot de passe</label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Min. 6 caractères"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   required
+                  minLength={6}
                 />
                 <button
                   type="button"
@@ -102,16 +108,16 @@ export default function Login() {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading || !email || !password}>
-              {loading ? "Connexion..." : "Se connecter"}
+            <Button type="submit" className="w-full" disabled={loading || !name || !email || !password}>
+              {loading ? "Création..." : "Créer mon compte"}
               <ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
           </form>
 
           <div className="mt-5 text-center text-sm text-muted-foreground">
-            Pas encore de compte ?{" "}
-            <Link to="/inscription" className="text-primary font-medium hover:underline">
-              Créer un compte
+            Déjà un compte ?{" "}
+            <Link to="/login" className="text-primary font-medium hover:underline">
+              Se connecter
             </Link>
           </div>
 

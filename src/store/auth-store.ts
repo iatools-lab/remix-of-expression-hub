@@ -34,34 +34,63 @@ export function isAllowedEmail(email: string): boolean {
   return email.toLowerCase().trim().endsWith(ALLOWED_DOMAIN);
 }
 
+interface RegisteredUser {
+  email: string;
+  name: string;
+  password: string;
+}
+
 interface AuthStore {
   user: AuthUser | null;
+  registeredUsers: RegisteredUser[];
   login: (email: string, password: string) => { ok: true } | { ok: false; error: string };
+  register: (email: string, name: string, password: string) => { ok: true } | { ok: false; error: string };
   logout: () => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
+      registeredUsers: [],
+      register: (rawEmail, name, password) => {
+        const email = rawEmail.toLowerCase().trim();
+        if (!email || !name || !password) {
+          return { ok: false, error: "Tous les champs sont requis." };
+        }
+        if (!isAllowedEmail(email)) {
+          return { ok: false, error: "Accès réservé aux adresses @upowa.org." };
+        }
+        if (password.length < 6) {
+          return { ok: false, error: "Le mot de passe doit contenir au moins 6 caractères." };
+        }
+        const existing = get().registeredUsers.find((u) => u.email === email);
+        if (existing) {
+          return { ok: false, error: "Un compte existe déjà avec cette adresse e-mail." };
+        }
+        set((s) => ({
+          registeredUsers: [...s.registeredUsers, { email, name: name.trim(), password }],
+        }));
+        return { ok: true };
+      },
       login: (rawEmail, password) => {
         const email = rawEmail.toLowerCase().trim();
         if (!email || !password) {
           return { ok: false, error: "Email et mot de passe requis." };
         }
         if (!isAllowedEmail(email)) {
-          return {
-            ok: false,
-            error: "Accès réservé aux adresses @upowa.org.",
-          };
+          return { ok: false, error: "Accès réservé aux adresses @upowa.org." };
         }
-        // Demo: any password ≥ 4 chars is accepted (no real backend yet).
-        if (password.length < 4) {
-          return { ok: false, error: "Mot de passe trop court (min. 4 caractères)." };
+        const registered = get().registeredUsers.find((u) => u.email === email);
+        if (!registered) {
+          return { ok: false, error: "Aucun compte trouvé avec cette adresse. Veuillez créer un compte." };
+        }
+        if (registered.password !== password) {
+          return { ok: false, error: "Mot de passe incorrect." };
         }
         const user: AuthUser = {
           email,
-          name: deriveNameFromEmail(email),
+          name: registered.name,
           role: getRoleForEmail(email),
         };
         set({ user });
@@ -69,6 +98,6 @@ export const useAuthStore = create<AuthStore>()(
       },
       logout: () => set({ user: null }),
     }),
-    { name: "auth-store-v1" }
+    { name: "auth-store-v2" }
   )
 );

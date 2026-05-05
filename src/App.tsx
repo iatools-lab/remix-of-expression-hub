@@ -11,6 +11,8 @@ import Validation from "./pages/Validation";
 import FebCreate from "./pages/FebCreate";
 import FebDetail from "./pages/FebDetail";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
 import Signature from "./pages/Signature";
 import SuppliersList from "./pages/SuppliersList";
 import SupplierForm from "./pages/SupplierForm";
@@ -36,6 +38,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/inscription" element={<Register />} />
+          <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
           <Route path="/" element={<Protected><Dashboard /></Protected>} />
           <Route path="/historique" element={<Protected><Historique /></Protected>} />
           <Route path="/validation" element={<Protected><Validation /></Protected>} />

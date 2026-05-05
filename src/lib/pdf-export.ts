@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { Feb, ROLE_LABELS, RECEIVED_VIA_LABELS } from "@/types/feb";
+import { Feb, ROLE_LABELS } from "@/types/feb";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -240,46 +240,6 @@ export function exportFebPdf(feb: Feb) {
   );
   y += 8;
 
-  // Section d — Suivi approvisionnement
-  const trackingRows: [string, string][] = [];
-  const addRow = (label: string, value: string | undefined | null) => {
-    if (value) trackingRows.push([label, value]);
-  };
-  addRow("Nom du projet", feb.projectName);
-  addRow("Reçu via", feb.receivedVia ? RECEIVED_VIA_LABELS[feb.receivedVia] : undefined);
-  addRow("Assignée (acheteur)", feb.assignee);
-  addRow("Budget alloué", feb.budgetSpend ? fmtXAF(feb.budgetSpend) : undefined);
-  addRow("Historique dépenses similaires", feb.historySpend ? fmtXAF(feb.historySpend) : undefined);
-  addRow("Détails de la FEB", feb.febDetails);
-  addRow("Date transmission PO", feb.poTransmissionDate ? format(new Date(feb.poTransmissionDate), "dd MMMM yyyy", { locale: fr }) : undefined);
-  addRow("Délai appro. (jours ouvrés)", feb.procurementLeadDays != null ? `${feb.procurementLeadDays} jours` : undefined);
-  addRow("Date livraison réelle", feb.actualDeliveryDate ? format(new Date(feb.actualDeliveryDate), "dd MMMM yyyy", { locale: fr }) : undefined);
-  addRow("Dépense réelle", feb.actualSpend ? fmtXAF(feb.actualSpend) : undefined);
-  addRow("Économies négociées", feb.savings);
-  addRow("Défis rencontrés", feb.challenges);
-  addRow("Actions / Solutions", feb.actionSolutions);
-
-  if (trackingRows.length > 0) {
-    // Check if we need a new page
-    if (y > doc.internal.pageSize.getHeight() - 60) {
-      doc.addPage();
-      y = margin;
-    }
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text("d. Suivi approvisionnement", margin, y);
-
-    autoTable(doc, {
-      startY: y + 2,
-      theme: "grid",
-      styles: { fontSize: 8, cellPadding: 2.5, valign: "top" },
-      columnStyles: {
-        0: { cellWidth: 55, fontStyle: "bold", fillColor: [241, 245, 249] },
-      },
-      body: trackingRows,
-    });
-    y = (doc as any).lastAutoTable.finalY + 4;
-  }
 
   // Footer
   doc.setFontSize(7);

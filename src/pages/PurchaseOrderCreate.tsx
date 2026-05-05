@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useSupplierStore } from "@/store/supplier-store";
@@ -59,6 +59,29 @@ export default function PurchaseOrderCreate() {
   ]);
 
   const totals = useMemo(() => computeOrderTotals(lines), [lines]);
+
+  const handleFebChange = useCallback(
+    (febId: string) => {
+      setSelectedFebId(febId);
+      if (febId === "none" || !febId) return;
+      const feb = approvedFebs.find((f) => f.id === febId);
+      if (!feb || feb.items.length === 0) return;
+      const newLines: PurchaseOrderLine[] = feb.items.map((item, idx) => ({
+        id: crypto.randomUUID(),
+        position: idx + 1,
+        designation: item.designation,
+        caracteristiques: item.caracteristiques || "",
+        quantite: item.quantite,
+        unite: "u",
+        prixUnitaireHt: item.prixEstime,
+        tauxTva: 19.25,
+        supplierId: suppliers[0]?.id ?? "",
+        supplierName: suppliers[0]?.raisonSociale ?? "",
+      }));
+      setLines(newLines);
+    },
+    [approvedFebs, suppliers]
+  );
 
   function updateLine(id: string, patch: Partial<PurchaseOrderLine>) {
     setLines((ls) =>
@@ -219,7 +242,7 @@ export default function PurchaseOrderCreate() {
           </div>
           <div className="md:col-span-2">
             <Label htmlFor="feb">FEB liée (optionnel)</Label>
-            <Select value={selectedFebId} onValueChange={setSelectedFebId}>
+            <Select value={selectedFebId} onValueChange={handleFebChange}>
               <SelectTrigger id="feb">
                 <SelectValue placeholder="Aucune FEB liée" />
               </SelectTrigger>

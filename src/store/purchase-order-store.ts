@@ -15,6 +15,8 @@ interface CreateInput {
   devise: string;
   conditionsPaiement?: string;
   dateLivraisonPrevue?: string;
+  febId?: string;
+  febNumero?: string;
   lines: PurchaseOrderLine[];
   submit: boolean;
 }

@@ -29,7 +29,8 @@ export type Role =
   | "responsable_pole"
   | "rpaf"
   | "supply_chain"
-  | "admin";
+  | "admin"
+  | "super_admin";
 
 export const ROLE_LABELS: Record<Role, string> = {
   demandeur: "Demandeur",
@@ -38,6 +39,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   rpaf: "Responsable Pôle Administratif & Financier",
   supply_chain: "Réception Supply Chain",
   admin: "Administrateur",
+  super_admin: "Super Administrateur",
 };
 
 export interface User {

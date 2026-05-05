@@ -131,6 +131,14 @@ export default function PurchaseOrderDetail() {
           />
           <Field label="Conditions de paiement" value={order.conditionsPaiement ?? "—"} />
           <Field
+            label="FEB liée"
+            value={
+              order.febId
+                ? <Link to={`/feb/${order.febId}`} className="text-primary underline">{order.febNumero}</Link>
+                : "—"
+            }
+          />
+          <Field
             label="Créé le"
             value={format(new Date(order.createdAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })}
           />

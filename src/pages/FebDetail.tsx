@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useFebStore, formatXAF } from "@/store/feb-store";
-import { canActOn, ROLE_LABELS, roleForStatus, RECEIVED_VIA_LABELS } from "@/types/feb";
+import { canActOn, ROLE_LABELS, roleForStatus, RECEIVED_VIA_LABELS, ReceivedVia } from "@/types/feb";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ValidationTimeline } from "@/components/ValidationTimeline";
 import { exportFebPdf } from "@/lib/pdf-export";
@@ -200,6 +207,33 @@ export default function FebDetail() {
             {editingTracking ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                  <Label>Nom du projet</Label>
+                  <Input value={trackProjectName} onChange={(e) => setTrackProjectName(e.target.value)} placeholder="Ex: Rénovation bâtiment B" className="mt-1" />
+                </div>
+                <div>
+                  <Label>Reçu via</Label>
+                  <Select value={trackReceivedVia} onValueChange={setTrackReceivedVia}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(RECEIVED_VIA_LABELS) as ReceivedVia[]).map((k) => (
+                        <SelectItem key={k} value={k}>{RECEIVED_VIA_LABELS[k]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Assignée (acheteur)</Label>
+                  <Input value={trackAssignee} onChange={(e) => setTrackAssignee(e.target.value)} placeholder="Nom de la personne en charge" className="mt-1" />
+                </div>
+                <div>
+                  <Label>Budget alloué (FCFA)</Label>
+                  <Input type="number" min={0} value={trackBudgetSpend} onChange={(e) => setTrackBudgetSpend(Number(e.target.value))} className="mt-1" />
+                </div>
+                <div>
+                  <Label>Historique dépenses similaires (FCFA)</Label>
+                  <Input type="number" min={0} value={trackHistorySpend} onChange={(e) => setTrackHistorySpend(Number(e.target.value))} className="mt-1" />
+                </div>
+                <div>
                   <Label>Date transmission PO</Label>
                   <Input type="date" value={poTransmissionDate} onChange={(e) => setPoTransmissionDate(e.target.value)} className="mt-1" />
                 </div>
@@ -214,6 +248,10 @@ export default function FebDetail() {
                 <div>
                   <Label>Dépense réelle (FCFA)</Label>
                   <Input type="number" min={0} value={actualSpend} onChange={(e) => setActualSpend(Number(e.target.value))} className="mt-1" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Détails de la FEB</Label>
+                  <Textarea value={trackFebDetails} onChange={(e) => setTrackFebDetails(e.target.value)} placeholder="Détails complémentaires sur le besoin..." className="mt-1" />
                 </div>
                 <div className="md:col-span-2">
                   <Label>Économies négociées (XAF/EUR/USD)</Label>
@@ -234,12 +272,18 @@ export default function FebDetail() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <TrackingField label="Nom du projet" value={feb.projectName} />
+                <TrackingField label="Reçu via" value={feb.receivedVia ? RECEIVED_VIA_LABELS[feb.receivedVia] : undefined} />
+                <TrackingField label="Assignée (acheteur)" value={feb.assignee} />
+                <TrackingField label="Budget alloué" value={feb.budgetSpend ? formatXAF(feb.budgetSpend) : undefined} />
+                <TrackingField label="Historique dépenses" value={feb.historySpend ? formatXAF(feb.historySpend) : undefined} />
                 <TrackingField label="Date transmission PO" value={feb.poTransmissionDate ? format(new Date(feb.poTransmissionDate), "dd MMM yyyy", { locale: fr }) : undefined} />
                 <TrackingField label="Délai appro. (jours ouvrés)" value={feb.procurementLeadDays != null ? `${feb.procurementLeadDays} j` : undefined} />
                 <TrackingField label="Date livraison réelle" value={feb.actualDeliveryDate ? format(new Date(feb.actualDeliveryDate), "dd MMM yyyy", { locale: fr }) : undefined} />
                 <TrackingField label="Dépense réelle" value={feb.actualSpend ? formatXAF(feb.actualSpend) : undefined} />
                 <TrackingField label="Économies négociées" value={feb.savings} />
-                <TrackingField label="Défis" value={feb.challenges} />
+                <TrackingField label="Détails FEB" value={feb.febDetails} className="sm:col-span-2" />
+                <TrackingField label="Défis" value={feb.challenges} className="sm:col-span-2" />
                 <TrackingField label="Actions / Solutions" value={feb.actionSolutions} className="sm:col-span-2" />
               </div>
             )}

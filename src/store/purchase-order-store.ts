@@ -48,7 +48,7 @@ export const usePurchaseOrderStore = create<POStore>()(
   persist(
     (set, get) => ({
       orders: seedOrders(),
-      createOrder: ({ objet, description, devise, conditionsPaiement, dateLivraisonPrevue, lines, submit }) => {
+      createOrder: ({ objet, description, devise, conditionsPaiement, dateLivraisonPrevue, febId, febNumero, lines, submit }) => {
         const user = useFebStore.getState().getCurrentUser();
         const totals = computeOrderTotals(lines);
         const now = new Date().toISOString();
@@ -64,6 +64,8 @@ export const usePurchaseOrderStore = create<POStore>()(
           ...totals,
           dateLivraisonPrevue,
           conditionsPaiement,
+          febId,
+          febNumero,
           createdById: user.id,
           createdByName: user.name,
           approvals: [],

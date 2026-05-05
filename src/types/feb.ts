@@ -91,6 +91,16 @@ export interface ValidationStep {
   };
 }
 
+export type ReceivedVia = "email" | "courrier" | "plateforme" | "telephone" | "autre";
+
+export const RECEIVED_VIA_LABELS: Record<ReceivedVia, string> = {
+  email: "Email",
+  courrier: "Courrier physique",
+  plateforme: "Plateforme",
+  telephone: "Téléphone",
+  autre: "Autre",
+};
+
 export interface Feb {
   id: string;
   numero: string; // 000/JJ-MM-AAAA/DD
@@ -100,13 +110,43 @@ export interface Feb {
   demandeurName: string;
   items: FebItem[];
   totalEstime: number;
-  delaiLivraison: string; // ISO date
+  delaiLivraison: string; // ISO date — expected delivery
   fournisseurPotentiel: string;
   needsTechnicalReview: boolean;
   status: FebStatus;
   validations: ValidationStep[];
   createdAt: string;
   updatedAt: string;
+
+  // ── New fields ──
+  /** Date the FEB was received by procurement */
+  receivedDate?: string; // ISO
+  /** Project name this FEB belongs to */
+  projectName?: string;
+  /** FEB details / description */
+  febDetails?: string;
+  /** How the FEB was received */
+  receivedVia?: ReceivedVia;
+  /** Budget spend (planned/allocated) in XAF */
+  budgetSpend?: number;
+  /** Person assigned to handle the FEB (procurement side) */
+  assignee?: string;
+  /** Date the PO was transmitted to supplier */
+  poTransmissionDate?: string; // ISO
+  /** Procurement lead time in working days (default target: 5) */
+  procurementLeadDays?: number;
+  /** Actual delivery date */
+  actualDeliveryDate?: string; // ISO
+  /** Challenges encountered */
+  challenges?: string;
+  /** Actions / solutions to challenges */
+  actionSolutions?: string;
+  /** Historical spend for similar needs (reference amount in XAF) */
+  historySpend?: number;
+  /** Actual spend in XAF */
+  actualSpend?: number;
+  /** Savings on negotiations (text — can include XAF/EUR/USD) */
+  savings?: string;
 }
 
 // Workflow next-status mapping

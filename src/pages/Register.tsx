@@ -24,6 +24,10 @@ export default function Register() {
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (password !== confirmPassword) {
+      setError("Les mots de passe ne correspondent pas.");
+      return;
+    }
     setLoading(true);
     const res = register(email, name, password);
     setLoading(false);

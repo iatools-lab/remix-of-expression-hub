@@ -222,7 +222,7 @@ export default function PurchaseOrderCreate() {
                 <SelectItem value="none">Aucune</SelectItem>
                 {approvedFebs.map((f) => (
                   <SelectItem key={f.id} value={f.id}>
-                    {f.numero} — {f.objet}
+                    {f.numero} — {f.natureBesoin}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -179,7 +179,7 @@ export function roleForStatus(status: FebStatus): Role | null {
 }
 
 export function canActOn(feb: Feb, role: Role): boolean {
-  if (role === "admin") return false;
+  if (role === "admin" || role === "super_admin") return false;
   return roleForStatus(feb.status) === role;
 }
 
@@ -192,7 +192,7 @@ export const VALIDATOR_ROLES: Role[] = [
 ];
 
 export function isValidatorRole(role: Role): boolean {
-  return VALIDATOR_ROLES.includes(role) || role === "admin";
+  return VALIDATOR_ROLES.includes(role) || role === "admin" || role === "super_admin";
 }
 
 // Days a FEB has been pending (since createdAt) — only meaningful for in-flight FEBs

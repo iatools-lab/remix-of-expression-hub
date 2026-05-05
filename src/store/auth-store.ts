@@ -2,12 +2,8 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Role } from "@/types/feb";
 
-// Hardcoded role mapping for designated signataires.
-// All other @upowa.org emails default to "demandeur".
-const ROLE_BY_EMAIL: Record<string, Role> = {
-  "oudou.nsangou@upowa.org": "responsable_pole",
-  "jalil.ketou@upowa.org": "rpaf",
-};
+const SUPER_ADMIN_EMAIL = "jalil.ketou@upowa.org";
+const SUPER_ADMIN_PASSWORD = "jalil@123";
 
 const ALLOWED_DOMAIN = "@upowa.org";
 
@@ -15,19 +11,6 @@ export interface AuthUser {
   email: string;
   name: string;
   role: Role;
-}
-
-function deriveNameFromEmail(email: string): string {
-  const local = email.split("@")[0] ?? email;
-  return local
-    .split(/[.\-_]/)
-    .filter(Boolean)
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
-    .join(" ");
-}
-
-export function getRoleForEmail(email: string): Role {
-  return ROLE_BY_EMAIL[email.toLowerCase()] ?? "demandeur";
 }
 
 export function isAllowedEmail(email: string): boolean {
@@ -38,6 +21,7 @@ interface RegisteredUser {
   email: string;
   name: string;
   password: string;
+  role: Role;
 }
 
 interface AuthStore {
@@ -46,6 +30,8 @@ interface AuthStore {
   login: (email: string, password: string) => { ok: true } | { ok: false; error: string };
   register: (email: string, name: string, password: string) => { ok: true } | { ok: false; error: string };
   logout: () => void;
+  updateUserRole: (email: string, role: Role) => void;
+  getAllUsers: () => RegisteredUser[];
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -69,7 +55,7 @@ export const useAuthStore = create<AuthStore>()(
           return { ok: false, error: "Un compte existe déjà avec cette adresse e-mail." };
         }
         set((s) => ({
-          registeredUsers: [...s.registeredUsers, { email, name: name.trim(), password }],
+          registeredUsers: [...s.registeredUsers, { email, name: name.trim(), password, role: "demandeur" }],
         }));
         return { ok: true };
       },
@@ -81,6 +67,25 @@ export const useAuthStore = create<AuthStore>()(
         if (!isAllowedEmail(email)) {
           return { ok: false, error: "Accès réservé aux adresses @upowa.org." };
         }
+
+        // Super admin built-in account
+        if (email === SUPER_ADMIN_EMAIL && password === SUPER_ADMIN_PASSWORD) {
+          const user: AuthUser = {
+            email,
+            name: "Jalil Ketou",
+            role: "super_admin",
+          };
+          set({ user });
+          // Ensure super admin is also in registeredUsers for listing
+          const exists = get().registeredUsers.find((u) => u.email === email);
+          if (!exists) {
+            set((s) => ({
+              registeredUsers: [...s.registeredUsers, { email, name: "Jalil Ketou", password: SUPER_ADMIN_PASSWORD, role: "super_admin" }],
+            }));
+          }
+          return { ok: true };
+        }
+
         const registered = get().registeredUsers.find((u) => u.email === email);
         if (!registered) {
           return { ok: false, error: "Aucun compte trouvé avec cette adresse. Veuillez créer un compte." };
@@ -91,13 +96,23 @@ export const useAuthStore = create<AuthStore>()(
         const user: AuthUser = {
           email,
           name: registered.name,
-          role: getRoleForEmail(email),
+          role: registered.role,
         };
         set({ user });
         return { ok: true };
       },
       logout: () => set({ user: null }),
+      updateUserRole: (email: string, role: Role) => {
+        set((s) => ({
+          registeredUsers: s.registeredUsers.map((u) =>
+            u.email === email ? { ...u, role } : u
+          ),
+          // Also update current user if they're the one being changed
+          user: s.user && s.user.email === email ? { ...s.user, role } : s.user,
+        }));
+      },
+      getAllUsers: () => get().registeredUsers,
     }),
-    { name: "auth-store-v2" }
+    { name: "auth-store-v3" }
   )
 );

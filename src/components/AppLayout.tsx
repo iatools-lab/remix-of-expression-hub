@@ -9,6 +9,7 @@ import {
   PenLine,
   Building2,
   ShoppingCart,
+  Shield,
 } from "lucide-react";
 import logo from "@/assets/upowa-logo.jpg";
 import { useFebStore } from "@/store/feb-store";

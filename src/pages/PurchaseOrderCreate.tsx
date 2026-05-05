@@ -213,6 +213,22 @@ export default function PurchaseOrderCreate() {
             />
           </div>
           <div className="md:col-span-2">
+            <Label htmlFor="feb">FEB liée (optionnel)</Label>
+            <Select value={selectedFebId} onValueChange={setSelectedFebId}>
+              <SelectTrigger id="feb">
+                <SelectValue placeholder="Aucune FEB liée" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Aucune</SelectItem>
+                {approvedFebs.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.numero} — {f.objet}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="md:col-span-2">
             <Label htmlFor="cp">Conditions de paiement</Label>
             <Input
               id="cp"

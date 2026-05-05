@@ -116,12 +116,17 @@ export default function PurchaseOrderCreate() {
         return;
       }
     }
+    const linkedFeb = selectedFebId && selectedFebId !== "none"
+      ? approvedFebs.find((f) => f.id === selectedFebId)
+      : undefined;
     const po = createOrder({
       objet,
       description: description || undefined,
       devise,
       conditionsPaiement: conditions || undefined,
       dateLivraisonPrevue: dateLivraison || undefined,
+      febId: linkedFeb?.id,
+      febNumero: linkedFeb?.numero,
       lines,
       submit,
     });

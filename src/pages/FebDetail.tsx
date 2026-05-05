@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useFebStore, formatXAF } from "@/store/feb-store";
-import { canActOn, ROLE_LABELS, roleForStatus, RECEIVED_VIA_LABELS } from "@/types/feb";
+import { canActOn, ROLE_LABELS, roleForStatus, RECEIVED_VIA_LABELS, ReceivedVia } from "@/types/feb";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ValidationTimeline } from "@/components/ValidationTimeline";
 import { exportFebPdf } from "@/lib/pdf-export";
@@ -40,6 +47,12 @@ export default function FebDetail() {
   const [editingTracking, setEditingTracking] = useState(false);
 
   // Post-validation tracking fields (local state for editing)
+  const [trackProjectName, setTrackProjectName] = useState("");
+  const [trackFebDetails, setTrackFebDetails] = useState("");
+  const [trackReceivedVia, setTrackReceivedVia] = useState<string>("plateforme");
+  const [trackBudgetSpend, setTrackBudgetSpend] = useState<number>(0);
+  const [trackAssignee, setTrackAssignee] = useState("");
+  const [trackHistorySpend, setTrackHistorySpend] = useState<number>(0);
   const [poTransmissionDate, setPoTransmissionDate] = useState("");
   const [procurementLeadDays, setProcurementLeadDays] = useState<number>(5);
   const [actualDeliveryDate, setActualDeliveryDate] = useState("");
@@ -62,6 +75,12 @@ export default function FebDetail() {
   const expectedRole = roleForStatus(feb.status);
 
   const startEditTracking = () => {
+    setTrackProjectName(feb.projectName ?? "");
+    setTrackFebDetails(feb.febDetails ?? "");
+    setTrackReceivedVia(feb.receivedVia ?? "plateforme");
+    setTrackBudgetSpend(feb.budgetSpend ?? 0);
+    setTrackAssignee(feb.assignee ?? "");
+    setTrackHistorySpend(feb.historySpend ?? 0);
     setPoTransmissionDate(feb.poTransmissionDate ? feb.poTransmissionDate.slice(0, 10) : "");
     setProcurementLeadDays(feb.procurementLeadDays ?? 5);
     setActualDeliveryDate(feb.actualDeliveryDate ? feb.actualDeliveryDate.slice(0, 10) : "");
@@ -74,6 +93,12 @@ export default function FebDetail() {
 
   const saveTracking = () => {
     updateFeb(feb.id, {
+      projectName: trackProjectName.trim() || undefined,
+      febDetails: trackFebDetails.trim() || undefined,
+      receivedVia: (trackReceivedVia as any) || undefined,
+      budgetSpend: trackBudgetSpend || undefined,
+      assignee: trackAssignee.trim() || undefined,
+      historySpend: trackHistorySpend || undefined,
       poTransmissionDate: poTransmissionDate ? new Date(poTransmissionDate).toISOString() : undefined,
       procurementLeadDays: procurementLeadDays || undefined,
       actualDeliveryDate: actualDeliveryDate ? new Date(actualDeliveryDate).toISOString() : undefined,
@@ -127,13 +152,6 @@ export default function FebDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Items + Actions */}
         <div className="lg:col-span-2 space-y-6">
-          {/* FEB Details */}
-          {feb.febDetails && (
-            <section className="card-elevated p-6">
-              <h2 className="font-semibold text-foreground mb-2">Détails de la FEB</h2>
-              <p className="text-sm text-muted-foreground whitespace-pre-line">{feb.febDetails}</p>
-            </section>
-          )}
 
           {/* Items table */}
           <section className="card-elevated p-6">
@@ -182,6 +200,33 @@ export default function FebDetail() {
             {editingTracking ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                  <Label>Nom du projet</Label>
+                  <Input value={trackProjectName} onChange={(e) => setTrackProjectName(e.target.value)} placeholder="Ex: Rénovation bâtiment B" className="mt-1" />
+                </div>
+                <div>
+                  <Label>Reçu via</Label>
+                  <Select value={trackReceivedVia} onValueChange={setTrackReceivedVia}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(RECEIVED_VIA_LABELS) as ReceivedVia[]).map((k) => (
+                        <SelectItem key={k} value={k}>{RECEIVED_VIA_LABELS[k]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Assignée (acheteur)</Label>
+                  <Input value={trackAssignee} onChange={(e) => setTrackAssignee(e.target.value)} placeholder="Nom de la personne en charge" className="mt-1" />
+                </div>
+                <div>
+                  <Label>Budget alloué (FCFA)</Label>
+                  <Input type="number" min={0} value={trackBudgetSpend} onChange={(e) => setTrackBudgetSpend(Number(e.target.value))} className="mt-1" />
+                </div>
+                <div>
+                  <Label>Historique dépenses similaires (FCFA)</Label>
+                  <Input type="number" min={0} value={trackHistorySpend} onChange={(e) => setTrackHistorySpend(Number(e.target.value))} className="mt-1" />
+                </div>
+                <div>
                   <Label>Date transmission PO</Label>
                   <Input type="date" value={poTransmissionDate} onChange={(e) => setPoTransmissionDate(e.target.value)} className="mt-1" />
                 </div>
@@ -196,6 +241,10 @@ export default function FebDetail() {
                 <div>
                   <Label>Dépense réelle (FCFA)</Label>
                   <Input type="number" min={0} value={actualSpend} onChange={(e) => setActualSpend(Number(e.target.value))} className="mt-1" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Détails de la FEB</Label>
+                  <Textarea value={trackFebDetails} onChange={(e) => setTrackFebDetails(e.target.value)} placeholder="Détails complémentaires sur le besoin..." className="mt-1" />
                 </div>
                 <div className="md:col-span-2">
                   <Label>Économies négociées (XAF/EUR/USD)</Label>
@@ -216,12 +265,18 @@ export default function FebDetail() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <TrackingField label="Nom du projet" value={feb.projectName} />
+                <TrackingField label="Reçu via" value={feb.receivedVia ? RECEIVED_VIA_LABELS[feb.receivedVia] : undefined} />
+                <TrackingField label="Assignée (acheteur)" value={feb.assignee} />
+                <TrackingField label="Budget alloué" value={feb.budgetSpend ? formatXAF(feb.budgetSpend) : undefined} />
+                <TrackingField label="Historique dépenses" value={feb.historySpend ? formatXAF(feb.historySpend) : undefined} />
                 <TrackingField label="Date transmission PO" value={feb.poTransmissionDate ? format(new Date(feb.poTransmissionDate), "dd MMM yyyy", { locale: fr }) : undefined} />
                 <TrackingField label="Délai appro. (jours ouvrés)" value={feb.procurementLeadDays != null ? `${feb.procurementLeadDays} j` : undefined} />
                 <TrackingField label="Date livraison réelle" value={feb.actualDeliveryDate ? format(new Date(feb.actualDeliveryDate), "dd MMM yyyy", { locale: fr }) : undefined} />
                 <TrackingField label="Dépense réelle" value={feb.actualSpend ? formatXAF(feb.actualSpend) : undefined} />
                 <TrackingField label="Économies négociées" value={feb.savings} />
-                <TrackingField label="Défis" value={feb.challenges} />
+                <TrackingField label="Détails FEB" value={feb.febDetails} className="sm:col-span-2" />
+                <TrackingField label="Défis" value={feb.challenges} className="sm:col-span-2" />
                 <TrackingField label="Actions / Solutions" value={feb.actionSolutions} className="sm:col-span-2" />
               </div>
             )}
@@ -340,11 +395,7 @@ export default function FebDetail() {
             <MetaRow label="Créée le" value={format(new Date(feb.createdAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })} />
             <MetaRow label="Mise à jour" value={format(new Date(feb.updatedAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })} />
             {feb.receivedDate && <MetaRow label="Reçue le" value={format(new Date(feb.receivedDate), "dd MMM yyyy", { locale: fr })} />}
-            {feb.receivedVia && <MetaRow label="Reçue via" value={RECEIVED_VIA_LABELS[feb.receivedVia]} />}
-            {feb.assignee && <MetaRow label="Assignée" value={feb.assignee} />}
             <MetaRow label="Validation technique" value={feb.needsTechnicalReview ? "Requise" : "Non requise"} />
-            {feb.budgetSpend != null && feb.budgetSpend > 0 && <MetaRow label="Budget alloué" value={formatXAF(feb.budgetSpend)} />}
-            {feb.historySpend != null && feb.historySpend > 0 && <MetaRow label="Historique dépenses" value={formatXAF(feb.historySpend)} />}
           </section>
         </div>
       </div>

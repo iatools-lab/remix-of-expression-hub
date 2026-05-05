@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFebStore, formatXAF } from "@/store/feb-store";
-import { DEPARTMENTS, Department, FebItem, ReceivedVia, RECEIVED_VIA_LABELS } from "@/types/feb";
+import { DEPARTMENTS, Department, FebItem } from "@/types/feb";
 import { Trash2, Plus, Save, Send, ArrowLeft, ImagePlus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,14 +31,6 @@ export default function FebCreate() {
   const [items, setItems] = useState<FebItem[]>([
     { id: crypto.randomUUID(), designation: "", quantite: 1, caracteristiques: "", prixEstime: 0 },
   ]);
-
-  // New fields
-  const [projectName, setProjectName] = useState("");
-  const [febDetails, setFebDetails] = useState("");
-  const [receivedVia, setReceivedVia] = useState<ReceivedVia>("plateforme");
-  const [budgetSpend, setBudgetSpend] = useState<number>(0);
-  const [assignee, setAssignee] = useState("");
-  const [historySpend, setHistorySpend] = useState<number>(0);
 
   const total = items.reduce((s, it) => s + (Number(it.prixEstime) || 0), 0);
 
@@ -75,12 +67,6 @@ export default function FebCreate() {
       fournisseurPotentiel: fournisseur.trim(),
       needsTechnicalReview,
       submit,
-      projectName: projectName.trim() || undefined,
-      febDetails: febDetails.trim() || undefined,
-      receivedVia,
-      budgetSpend: budgetSpend || undefined,
-      assignee: assignee.trim() || undefined,
-      historySpend: historySpend || undefined,
     });
     toast.success(submit ? `FEB ${feb.numero} soumise pour validation` : `FEB ${feb.numero} enregistrée en brouillon`);
     navigate(`/febs/${feb.id}`);
@@ -118,17 +104,6 @@ export default function FebCreate() {
             />
           </div>
           <div>
-            <Label htmlFor="projectName">Nom du projet</Label>
-            <Input
-              id="projectName"
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              placeholder="Ex: Rénovation bâtiment B"
-              maxLength={200}
-              className="mt-1.5"
-            />
-          </div>
-          <div>
             <Label>Département demandeur *</Label>
             <Select value={departement} onValueChange={(v) => setDepartement(v as Department)}>
               <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
@@ -147,17 +122,6 @@ export default function FebCreate() {
               className="mt-1.5"
             />
           </div>
-          <div>
-            <Label>Reçu via</Label>
-            <Select value={receivedVia} onValueChange={(v) => setReceivedVia(v as ReceivedVia)}>
-              <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(RECEIVED_VIA_LABELS) as ReceivedVia[]).map((k) => (
-                  <SelectItem key={k} value={k}>{RECEIVED_VIA_LABELS[k]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="md:col-span-2">
             <Label htmlFor="fournisseur">Fournisseur potentiel *</Label>
             <Input
@@ -166,50 +130,6 @@ export default function FebCreate() {
               onChange={(e) => setFournisseur(e.target.value)}
               placeholder="Ex: DOVV SARL BASTOS"
               maxLength={150}
-              className="mt-1.5"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <Label htmlFor="febDetails">Détails de la FEB</Label>
-            <Textarea
-              id="febDetails"
-              value={febDetails}
-              onChange={(e) => setFebDetails(e.target.value)}
-              placeholder="Détails complémentaires sur le besoin..."
-              maxLength={1000}
-              className="mt-1.5"
-            />
-          </div>
-          <div>
-            <Label htmlFor="assignee">Assignée (acheteur)</Label>
-            <Input
-              id="assignee"
-              value={assignee}
-              onChange={(e) => setAssignee(e.target.value)}
-              placeholder="Nom de la personne en charge"
-              maxLength={100}
-              className="mt-1.5"
-            />
-          </div>
-          <div>
-            <Label htmlFor="budgetSpend">Budget alloué (FCFA)</Label>
-            <Input
-              id="budgetSpend"
-              type="number"
-              min={0}
-              value={budgetSpend}
-              onChange={(e) => setBudgetSpend(Number(e.target.value))}
-              className="mt-1.5"
-            />
-          </div>
-          <div>
-            <Label htmlFor="historySpend">Historique dépenses similaires (FCFA)</Label>
-            <Input
-              id="historySpend"
-              type="number"
-              min={0}
-              value={historySpend}
-              onChange={(e) => setHistorySpend(Number(e.target.value))}
               className="mt-1.5"
             />
           </div>

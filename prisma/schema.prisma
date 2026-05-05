@@ -35,6 +35,7 @@ enum Role {
   RPAF // Responsable Pôle Administratif & Financier
   SUPPLY_CHAIN // Réception au pôle Opérations & Supply Chain
   ADMIN
+  SUPER_ADMIN // Accès total à la plateforme + gestion des utilisateurs
 }
 
 /// État d'une FEB dans son circuit de validation.
@@ -340,6 +341,36 @@ model Feb {
   /// Date de finalisation (VALIDEE ou REJETEE).
   closedAt    DateTime? @map("closed_at") @db.Timestamptz(6)
 
+  // ── Suivi approvisionnement (renseigné par Supply Chain) ──────────────────
+  /// Date de réception de la FEB par le pôle Approvisionnement.
+  receivedDate        DateTime? @map("received_date") @db.Timestamptz(6)
+  /// Nom du projet associé.
+  projectName         String?   @map("project_name") @db.VarChar(200)
+  /// Détails complémentaires de la FEB.
+  febDetails          String?   @map("feb_details") @db.Text
+  /// Canal de réception de la FEB.
+  receivedVia         String?   @map("received_via") @db.VarChar(30)
+  /// Budget alloué / prévu (FCFA).
+  budgetSpend         Decimal?  @map("budget_spend") @db.Decimal(14, 2)
+  /// Personne assignée au traitement.
+  assignee            String?   @db.VarChar(120)
+  /// Date de transmission du bon de commande au fournisseur.
+  poTransmissionDate  DateTime? @map("po_transmission_date") @db.Date
+  /// Délai d'approvisionnement en jours ouvrés.
+  procurementLeadDays Int?      @map("procurement_lead_days")
+  /// Date de livraison effective.
+  actualDeliveryDate  DateTime? @map("actual_delivery_date") @db.Date
+  /// Défis / difficultés rencontrées.
+  challenges          String?   @db.Text
+  /// Actions / solutions mises en place.
+  actionSolutions     String?   @map("action_solutions") @db.Text
+  /// Dépenses historiques pour des besoins similaires (FCFA).
+  historySpend        Decimal?  @map("history_spend") @db.Decimal(14, 2)
+  /// Dépenses réelles (FCFA).
+  actualSpend         Decimal?  @map("actual_spend") @db.Decimal(14, 2)
+  /// Économies réalisées lors des négociations.
+  savings             String?   @db.VarChar(200)
+
   // Relations
   demandeur   User            @relation("FebDemandeur", fields: [demandeurId], references: [id], onDelete: Restrict)
   department  Department      @relation(fields: [departmentId], references: [id], onDelete: Restrict)
@@ -630,6 +661,10 @@ model PurchaseOrder {
   dateLivraisonReelle DateTime? @map("date_livraison_reelle") @db.Date
   /// Conditions de paiement libres (ex: "30 jours fin de mois").
   conditionsPaiement  String?   @map("conditions_paiement") @db.VarChar(255)
+
+  /// Lien optionnel vers une FEB existante.
+  febId   String? @map("feb_id") @db.Uuid
+  febNumero String? @map("feb_numero") @db.VarChar(40)
 
   // ── Acteurs ───────────────────────────────────────────────────────────────
   createdById   String @map("created_by_id") @db.Uuid

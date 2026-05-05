@@ -372,7 +372,7 @@ function Stat({
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>

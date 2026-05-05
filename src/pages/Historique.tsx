@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Search, FileText, History } from "lucide-react";
+import { Search, FileText, History, Download } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import * as XLSX from "xlsx";
 import { useFebStore, formatXAF } from "@/store/feb-store";
-import { isValidatorRole, DEPARTMENTS, FebStatus, STATUS_LABELS } from "@/types/feb";
+import { isValidatorRole, DEPARTMENTS, FebStatus, STATUS_LABELS, RECEIVED_VIA_LABELS, ROLE_LABELS } from "@/types/feb";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,

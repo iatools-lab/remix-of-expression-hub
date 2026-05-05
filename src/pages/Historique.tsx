@@ -54,20 +54,71 @@ export default function Historique() {
       })
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [scoped, q, status, dept]);
+  const exportToExcel = useCallback(() => {
+    const fmtDate = (d?: string) => d ? format(new Date(d), "dd/MM/yyyy", { locale: fr }) : "";
+    const rows = filtered.map((f) => ({
+      "ID FEB": f.numero,
+      "Date de création": fmtDate(f.createdAt),
+      "Date de réception": fmtDate(f.receivedDate),
+      "Demandeur": f.demandeurName,
+      "Département": f.departement,
+      "Nature du besoin": f.natureBesoin,
+      "Nom du projet": f.projectName || "",
+      "Détails FEB": f.febDetails || "",
+      "Reçu via": f.receivedVia ? RECEIVED_VIA_LABELS[f.receivedVia] : "",
+      "Fournisseur potentiel": f.fournisseurPotentiel,
+      "Revue technique requise": f.needsTechnicalReview ? "Oui" : "Non",
+      "Articles": f.items.map((i) => `${i.designation} (x${i.quantite})`).join("; "),
+      "Total estimé (XAF)": f.totalEstime,
+      "Budget alloué (XAF)": f.budgetSpend ?? "",
+      "Historique dépenses (XAF)": f.historySpend ?? "",
+      "Assignée": f.assignee || "",
+      "Délai livraison souhaité": fmtDate(f.delaiLivraison),
+      "Date transmission PO": fmtDate(f.poTransmissionDate),
+      "Délai approvisionnement (jours)": f.procurementLeadDays ?? "",
+      "Date livraison prévue": fmtDate(f.delaiLivraison),
+      "Date livraison effective": fmtDate(f.actualDeliveryDate),
+      "Dépense réelle (XAF)": f.actualSpend ?? "",
+      "Économies négociations": f.savings || "",
+      "Statut": STATUS_LABELS[f.status],
+      "Défis": f.challenges || "",
+      "Actions/Solutions": f.actionSolutions || "",
+      "Validations": f.validations.map((v) => `${ROLE_LABELS[v.role]}: ${v.action}${v.comment ? ` - ${v.comment}` : ""}`).join(" | "),
+      "Dernière MAJ": fmtDate(f.updatedAt),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "FEB");
+
+    // Auto-size columns
+    const colWidths = Object.keys(rows[0] || {}).map((key) => ({
+      wch: Math.max(key.length, ...rows.map((r) => String((r as Record<string, unknown>)[key] ?? "").length).slice(0, 50)) + 2,
+    }));
+    ws["!cols"] = colWidths;
+
+    XLSX.writeFile(wb, `FEB_Export_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+  }, [filtered]);
 
   return (
     <div className="space-y-6 max-w-6xl">
-      <header>
-        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-          <History className="w-3.5 h-3.5" />
-          Historique
+      <header className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+            <History className="w-3.5 h-3.5" />
+            Historique
+          </div>
+          <h1 className="text-2xl font-semibold text-foreground mt-1 tracking-tight">
+            {isValidator ? "Toutes les FEB" : "Mes FEB"}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {filtered.length} fiche{filtered.length > 1 ? "s" : ""} sur {scoped.length}
+          </p>
         </div>
-        <h1 className="text-2xl font-semibold text-foreground mt-1 tracking-tight">
-          {isValidator ? "Toutes les FEB" : "Mes FEB"}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {filtered.length} fiche{filtered.length > 1 ? "s" : ""} sur {scoped.length}
-        </p>
+        <Button variant="outline" size="sm" onClick={exportToExcel} disabled={filtered.length === 0} className="gap-2">
+          <Download className="w-4 h-4" />
+          Exporter Excel
+        </Button>
       </header>
 
       <div className="flex flex-col md:flex-row gap-2">

@@ -242,7 +242,7 @@ export default function PurchaseOrderCreate() {
           </div>
           <div className="md:col-span-2">
             <Label htmlFor="feb">FEB liée (optionnel)</Label>
-            <Select value={selectedFebId} onValueChange={setSelectedFebId}>
+            <Select value={selectedFebId} onValueChange={handleFebChange}>
               <SelectTrigger id="feb">
                 <SelectValue placeholder="Aucune FEB liée" />
               </SelectTrigger>

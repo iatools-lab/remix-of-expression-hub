@@ -30,12 +30,18 @@ export default function PurchaseOrderCreate() {
     [allSuppliers]
   );
   const createOrder = usePurchaseOrderStore((s) => s.createOrder);
+  const allFebs = useFebStore((s) => s.febs);
+  const approvedFebs = useMemo(
+    () => allFebs.filter((f) => f.status === "approved" || f.status === "completed"),
+    [allFebs]
+  );
 
   const [objet, setObjet] = useState("");
   const [description, setDescription] = useState("");
   const [devise, setDevise] = useState("XAF");
   const [conditions, setConditions] = useState("30 jours fin de mois");
   const [dateLivraison, setDateLivraison] = useState("");
+  const [selectedFebId, setSelectedFebId] = useState("");
 
   const [lines, setLines] = useState<PurchaseOrderLine[]>([
     {

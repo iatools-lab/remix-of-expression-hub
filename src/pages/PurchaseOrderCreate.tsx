@@ -32,7 +32,7 @@ export default function PurchaseOrderCreate() {
   const createOrder = usePurchaseOrderStore((s) => s.createOrder);
   const allFebs = useFebStore((s) => s.febs);
   const approvedFebs = useMemo(
-    () => allFebs.filter((f) => f.status === "approved" || f.status === "completed"),
+    () => allFebs.filter((f) => f.status === "validee" || f.status === "en_attente_reception"),
     [allFebs]
   );
 

@@ -34,9 +34,17 @@ export function isAllowedEmail(email: string): boolean {
   return email.toLowerCase().trim().endsWith(ALLOWED_DOMAIN);
 }
 
+interface RegisteredUser {
+  email: string;
+  name: string;
+  password: string;
+}
+
 interface AuthStore {
   user: AuthUser | null;
+  registeredUsers: RegisteredUser[];
   login: (email: string, password: string) => { ok: true } | { ok: false; error: string };
+  register: (email: string, name: string, password: string) => { ok: true } | { ok: false; error: string };
   logout: () => void;
 }
 

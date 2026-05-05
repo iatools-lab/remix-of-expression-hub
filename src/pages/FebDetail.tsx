@@ -282,6 +282,7 @@ export default function FebDetail() {
               </div>
             )}
           </section>
+          )}
 
           {/* Actions */}
           {(isOwnerDraft || canValidate) && (

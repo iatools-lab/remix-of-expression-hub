@@ -662,6 +662,10 @@ model PurchaseOrder {
   /// Conditions de paiement libres (ex: "30 jours fin de mois").
   conditionsPaiement  String?   @map("conditions_paiement") @db.VarChar(255)
 
+  /// Lien optionnel vers une FEB existante.
+  febId   String? @map("feb_id") @db.Uuid
+  febNumero String? @map("feb_numero") @db.VarChar(40)
+
   // ── Acteurs ───────────────────────────────────────────────────────────────
   createdById   String @map("created_by_id") @db.Uuid
   createdByName String @map("created_by_name") @db.VarChar(120)

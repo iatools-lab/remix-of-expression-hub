@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { Feb, ROLE_LABELS, RECEIVED_VIA_LABELS } from "@/types/feb";
+import { Feb, ROLE_LABELS } from "@/types/feb";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 

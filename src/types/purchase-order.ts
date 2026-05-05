@@ -56,6 +56,9 @@ export interface PurchaseOrder {
   dateLivraisonPrevue?: string;
   dateLivraisonReelle?: string;
   conditionsPaiement?: string;
+  /** Lien optionnel vers une FEB existante */
+  febId?: string;
+  febNumero?: string;
   createdById: string;
   createdByName: string;
   approvals: PurchaseOrderApproval[];

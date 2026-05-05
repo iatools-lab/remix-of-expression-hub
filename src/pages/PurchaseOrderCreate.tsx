@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useSupplierStore } from "@/store/supplier-store";
+import { useFebStore } from "@/store/feb-store";
 import { usePurchaseOrderStore, formatXAF } from "@/store/purchase-order-store";
 import {
   PurchaseOrderLine,
@@ -29,12 +30,18 @@ export default function PurchaseOrderCreate() {
     [allSuppliers]
   );
   const createOrder = usePurchaseOrderStore((s) => s.createOrder);
+  const allFebs = useFebStore((s) => s.febs);
+  const approvedFebs = useMemo(
+    () => allFebs.filter((f) => f.status === "validee" || f.status === "en_attente_reception"),
+    [allFebs]
+  );
 
   const [objet, setObjet] = useState("");
   const [description, setDescription] = useState("");
   const [devise, setDevise] = useState("XAF");
   const [conditions, setConditions] = useState("30 jours fin de mois");
   const [dateLivraison, setDateLivraison] = useState("");
+  const [selectedFebId, setSelectedFebId] = useState("");
 
   const [lines, setLines] = useState<PurchaseOrderLine[]>([
     {
@@ -109,12 +116,17 @@ export default function PurchaseOrderCreate() {
         return;
       }
     }
+    const linkedFeb = selectedFebId && selectedFebId !== "none"
+      ? approvedFebs.find((f) => f.id === selectedFebId)
+      : undefined;
     const po = createOrder({
       objet,
       description: description || undefined,
       devise,
       conditionsPaiement: conditions || undefined,
       dateLivraisonPrevue: dateLivraison || undefined,
+      febId: linkedFeb?.id,
+      febNumero: linkedFeb?.numero,
       lines,
       submit,
     });
@@ -204,6 +216,22 @@ export default function PurchaseOrderCreate() {
               value={dateLivraison}
               onChange={(e) => setDateLivraison(e.target.value)}
             />
+          </div>
+          <div className="md:col-span-2">
+            <Label htmlFor="feb">FEB liée (optionnel)</Label>
+            <Select value={selectedFebId} onValueChange={setSelectedFebId}>
+              <SelectTrigger id="feb">
+                <SelectValue placeholder="Aucune FEB liée" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Aucune</SelectItem>
+                {approvedFebs.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.numero} — {f.natureBesoin}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="md:col-span-2">
             <Label htmlFor="cp">Conditions de paiement</Label>

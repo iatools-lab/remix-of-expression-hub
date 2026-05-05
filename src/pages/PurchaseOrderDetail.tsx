@@ -131,6 +131,14 @@ export default function PurchaseOrderDetail() {
           />
           <Field label="Conditions de paiement" value={order.conditionsPaiement ?? "—"} />
           <Field
+            label="FEB liée"
+            value={
+              order.febId
+                ? <Link to={`/feb/${order.febId}`} className="text-primary underline">{order.febNumero}</Link>
+                : "—"
+            }
+          />
+          <Field
             label="Créé le"
             value={format(new Date(order.createdAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })}
           />
@@ -364,7 +372,7 @@ function Stat({
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>

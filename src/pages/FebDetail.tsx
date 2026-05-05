@@ -40,6 +40,12 @@ export default function FebDetail() {
   const [editingTracking, setEditingTracking] = useState(false);
 
   // Post-validation tracking fields (local state for editing)
+  const [trackProjectName, setTrackProjectName] = useState("");
+  const [trackFebDetails, setTrackFebDetails] = useState("");
+  const [trackReceivedVia, setTrackReceivedVia] = useState<string>("plateforme");
+  const [trackBudgetSpend, setTrackBudgetSpend] = useState<number>(0);
+  const [trackAssignee, setTrackAssignee] = useState("");
+  const [trackHistorySpend, setTrackHistorySpend] = useState<number>(0);
   const [poTransmissionDate, setPoTransmissionDate] = useState("");
   const [procurementLeadDays, setProcurementLeadDays] = useState<number>(5);
   const [actualDeliveryDate, setActualDeliveryDate] = useState("");
@@ -62,6 +68,12 @@ export default function FebDetail() {
   const expectedRole = roleForStatus(feb.status);
 
   const startEditTracking = () => {
+    setTrackProjectName(feb.projectName ?? "");
+    setTrackFebDetails(feb.febDetails ?? "");
+    setTrackReceivedVia(feb.receivedVia ?? "plateforme");
+    setTrackBudgetSpend(feb.budgetSpend ?? 0);
+    setTrackAssignee(feb.assignee ?? "");
+    setTrackHistorySpend(feb.historySpend ?? 0);
     setPoTransmissionDate(feb.poTransmissionDate ? feb.poTransmissionDate.slice(0, 10) : "");
     setProcurementLeadDays(feb.procurementLeadDays ?? 5);
     setActualDeliveryDate(feb.actualDeliveryDate ? feb.actualDeliveryDate.slice(0, 10) : "");
@@ -74,6 +86,12 @@ export default function FebDetail() {
 
   const saveTracking = () => {
     updateFeb(feb.id, {
+      projectName: trackProjectName.trim() || undefined,
+      febDetails: trackFebDetails.trim() || undefined,
+      receivedVia: (trackReceivedVia as any) || undefined,
+      budgetSpend: trackBudgetSpend || undefined,
+      assignee: trackAssignee.trim() || undefined,
+      historySpend: trackHistorySpend || undefined,
       poTransmissionDate: poTransmissionDate ? new Date(poTransmissionDate).toISOString() : undefined,
       procurementLeadDays: procurementLeadDays || undefined,
       actualDeliveryDate: actualDeliveryDate ? new Date(actualDeliveryDate).toISOString() : undefined,

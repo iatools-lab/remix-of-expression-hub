@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useFebStore, formatXAF } from "@/store/feb-store";
-import { canActOn, ROLE_LABELS, roleForStatus } from "@/types/feb";
+import { canActOn, ROLE_LABELS, roleForStatus, RECEIVED_VIA_LABELS } from "@/types/feb";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ValidationTimeline } from "@/components/ValidationTimeline";
 import { exportFebPdf } from "@/lib/pdf-export";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Download, Send, Check, X, Calendar, Building2, User, Truck, AlertCircle } from "lucide-react";
+import { ArrowLeft, Download, Send, Check, X, Calendar, Building2, User, Truck, AlertCircle, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -31,9 +33,20 @@ export default function FebDetail() {
   const submitFeb = useFebStore((s) => s.submitFeb);
   const approveFeb = useFebStore((s) => s.approveFeb);
   const rejectFeb = useFebStore((s) => s.rejectFeb);
+  const updateFeb = useFebStore((s) => s.updateFeb);
 
   const [comment, setComment] = useState("");
   const [rejectReason, setRejectReason] = useState("");
+  const [editingTracking, setEditingTracking] = useState(false);
+
+  // Post-validation tracking fields (local state for editing)
+  const [poTransmissionDate, setPoTransmissionDate] = useState("");
+  const [procurementLeadDays, setProcurementLeadDays] = useState<number>(5);
+  const [actualDeliveryDate, setActualDeliveryDate] = useState("");
+  const [challenges, setChallenges] = useState("");
+  const [actionSolutions, setActionSolutions] = useState("");
+  const [actualSpend, setActualSpend] = useState<number>(0);
+  const [savings, setSavings] = useState("");
 
   if (!feb) {
     return (
@@ -47,6 +60,31 @@ export default function FebDetail() {
   const isOwnerDraft = feb.status === "brouillon" && feb.demandeurId === user.id;
   const canValidate = canActOn(feb, user.role);
   const expectedRole = roleForStatus(feb.status);
+
+  const startEditTracking = () => {
+    setPoTransmissionDate(feb.poTransmissionDate ? feb.poTransmissionDate.slice(0, 10) : "");
+    setProcurementLeadDays(feb.procurementLeadDays ?? 5);
+    setActualDeliveryDate(feb.actualDeliveryDate ? feb.actualDeliveryDate.slice(0, 10) : "");
+    setChallenges(feb.challenges ?? "");
+    setActionSolutions(feb.actionSolutions ?? "");
+    setActualSpend(feb.actualSpend ?? 0);
+    setSavings(feb.savings ?? "");
+    setEditingTracking(true);
+  };
+
+  const saveTracking = () => {
+    updateFeb(feb.id, {
+      poTransmissionDate: poTransmissionDate ? new Date(poTransmissionDate).toISOString() : undefined,
+      procurementLeadDays: procurementLeadDays || undefined,
+      actualDeliveryDate: actualDeliveryDate ? new Date(actualDeliveryDate).toISOString() : undefined,
+      challenges: challenges.trim() || undefined,
+      actionSolutions: actionSolutions.trim() || undefined,
+      actualSpend: actualSpend || undefined,
+      savings: savings.trim() || undefined,
+    });
+    setEditingTracking(false);
+    toast.success("Suivi mis à jour");
+  };
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -66,6 +104,9 @@ export default function FebDetail() {
               <StatusBadge status={feb.status} />
             </div>
             <h1 className="text-2xl font-bold text-foreground">{feb.natureBesoin}</h1>
+            {feb.projectName && (
+              <p className="text-sm font-medium text-primary">Projet : {feb.projectName}</p>
+            )}
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5" /> {feb.departement}</span>
               <span className="inline-flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {feb.demandeurName}</span>
@@ -86,6 +127,15 @@ export default function FebDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Items + Actions */}
         <div className="lg:col-span-2 space-y-6">
+          {/* FEB Details */}
+          {feb.febDetails && (
+            <section className="card-elevated p-6">
+              <h2 className="font-semibold text-foreground mb-2">Détails de la FEB</h2>
+              <p className="text-sm text-muted-foreground whitespace-pre-line">{feb.febDetails}</p>
+            </section>
+          )}
+
+          {/* Items table */}
           <section className="card-elevated p-6">
             <h2 className="font-semibold text-foreground mb-4">Articles demandés</h2>
             <div className="overflow-x-auto">
@@ -116,6 +166,65 @@ export default function FebDetail() {
                 </tbody>
               </table>
             </div>
+          </section>
+
+          {/* Post-validation tracking */}
+          <section className="card-elevated p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-foreground">Suivi approvisionnement</h2>
+              {!editingTracking && (
+                <Button variant="outline" size="sm" onClick={startEditTracking}>
+                  <Pencil className="w-3.5 h-3.5 mr-1.5" /> Modifier
+                </Button>
+              )}
+            </div>
+
+            {editingTracking ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Date transmission PO</Label>
+                  <Input type="date" value={poTransmissionDate} onChange={(e) => setPoTransmissionDate(e.target.value)} className="mt-1" />
+                </div>
+                <div>
+                  <Label>Délai approvisionnement (jours ouvrés)</Label>
+                  <Input type="number" min={0} value={procurementLeadDays} onChange={(e) => setProcurementLeadDays(Number(e.target.value))} className="mt-1" />
+                </div>
+                <div>
+                  <Label>Date livraison réelle</Label>
+                  <Input type="date" value={actualDeliveryDate} onChange={(e) => setActualDeliveryDate(e.target.value)} className="mt-1" />
+                </div>
+                <div>
+                  <Label>Dépense réelle (FCFA)</Label>
+                  <Input type="number" min={0} value={actualSpend} onChange={(e) => setActualSpend(Number(e.target.value))} className="mt-1" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Économies négociées (XAF/EUR/USD)</Label>
+                  <Input value={savings} onChange={(e) => setSavings(e.target.value)} placeholder="Ex: 150 000 FCFA / 230 EUR" className="mt-1" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Défis rencontrés</Label>
+                  <Textarea value={challenges} onChange={(e) => setChallenges(e.target.value)} placeholder="Décrivez les défis..." className="mt-1" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Actions / Solutions</Label>
+                  <Textarea value={actionSolutions} onChange={(e) => setActionSolutions(e.target.value)} placeholder="Actions prises pour résoudre..." className="mt-1" />
+                </div>
+                <div className="md:col-span-2 flex gap-2">
+                  <Button onClick={saveTracking}>Enregistrer</Button>
+                  <Button variant="outline" onClick={() => setEditingTracking(false)}>Annuler</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <TrackingField label="Date transmission PO" value={feb.poTransmissionDate ? format(new Date(feb.poTransmissionDate), "dd MMM yyyy", { locale: fr }) : undefined} />
+                <TrackingField label="Délai appro. (jours ouvrés)" value={feb.procurementLeadDays != null ? `${feb.procurementLeadDays} j` : undefined} />
+                <TrackingField label="Date livraison réelle" value={feb.actualDeliveryDate ? format(new Date(feb.actualDeliveryDate), "dd MMM yyyy", { locale: fr }) : undefined} />
+                <TrackingField label="Dépense réelle" value={feb.actualSpend ? formatXAF(feb.actualSpend) : undefined} />
+                <TrackingField label="Économies négociées" value={feb.savings} />
+                <TrackingField label="Défis" value={feb.challenges} />
+                <TrackingField label="Actions / Solutions" value={feb.actionSolutions} className="sm:col-span-2" />
+              </div>
+            )}
           </section>
 
           {/* Actions */}
@@ -219,7 +328,7 @@ export default function FebDetail() {
           )}
         </div>
 
-        {/* Timeline */}
+        {/* Sidebar */}
         <div className="space-y-6">
           <section className="card-elevated p-6">
             <h2 className="font-semibold text-foreground mb-4">Circuit de validation</h2>
@@ -227,22 +336,36 @@ export default function FebDetail() {
           </section>
 
           <section className="card-elevated p-6 space-y-2">
-            <h2 className="font-semibold text-foreground mb-2">Métadonnées</h2>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Créée le</span>
-              <span className="font-medium">{format(new Date(feb.createdAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Mise à jour</span>
-              <span className="font-medium">{format(new Date(feb.updatedAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Validation technique</span>
-              <span className="font-medium">{feb.needsTechnicalReview ? "Requise" : "Non requise"}</span>
-            </div>
+            <h2 className="font-semibold text-foreground mb-2">Informations</h2>
+            <MetaRow label="Créée le" value={format(new Date(feb.createdAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })} />
+            <MetaRow label="Mise à jour" value={format(new Date(feb.updatedAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })} />
+            {feb.receivedDate && <MetaRow label="Reçue le" value={format(new Date(feb.receivedDate), "dd MMM yyyy", { locale: fr })} />}
+            {feb.receivedVia && <MetaRow label="Reçue via" value={RECEIVED_VIA_LABELS[feb.receivedVia]} />}
+            {feb.assignee && <MetaRow label="Assignée" value={feb.assignee} />}
+            <MetaRow label="Validation technique" value={feb.needsTechnicalReview ? "Requise" : "Non requise"} />
+            {feb.budgetSpend != null && feb.budgetSpend > 0 && <MetaRow label="Budget alloué" value={formatXAF(feb.budgetSpend)} />}
+            {feb.historySpend != null && feb.historySpend > 0 && <MetaRow label="Historique dépenses" value={formatXAF(feb.historySpend)} />}
           </section>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MetaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function TrackingField({ label, value, className }: { label: string; value?: string; className?: string }) {
+  return (
+    <div className={className}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium text-foreground mt-0.5">{value || "—"}</p>
     </div>
   );
 }

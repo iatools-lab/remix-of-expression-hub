@@ -63,6 +63,12 @@ enum SignatureType {
   TYPED
 }
 
+/// Type d'action administrative tracée dans `FebEditLog`.
+enum FebEditAction {
+  REOUVERTURE
+  MODIFICATION
+}
+
 /// Catégorie d'un fichier stocké dans la table `FileAsset`.
 enum FileKind {
   SIGNATURE
@@ -136,6 +142,7 @@ enum AuditAction {
   FEB_REJECTED
   FEB_DELETED
   FEB_PDF_EXPORTED
+  FEB_REOPENED
   // Référentiel
   DEPARTMENT_SIGNATORY_CHANGED
   // Prestataires
@@ -313,7 +320,8 @@ model Feb {
   numero String @unique @db.VarChar(40)
 
   natureBesoin         String  @map("nature_besoin") @db.VarChar(300)
-  fournisseurPotentiel String  @map("fournisseur_potentiel") @db.VarChar(200)
+  /// Fournisseur potentiel (optionnel — peut être renseigné plus tard par Supply Chain).
+  fournisseurPotentiel String? @map("fournisseur_potentiel") @db.VarChar(200)
   /// Indique si le circuit doit inclure le Responsable Pôle Technique.
   needsTechnicalReview Boolean @default(false) @map("needs_technical_review")
 
@@ -377,6 +385,7 @@ model Feb {
   items       FebItem[]
   validations FebValidation[]
   pdfExports  FebPdfExport[]
+  editLogs    FebEditLog[]
 
   @@index([status])
   @@index([demandeurId])

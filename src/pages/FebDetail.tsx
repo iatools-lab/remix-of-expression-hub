@@ -91,7 +91,24 @@ export default function FebDetail() {
     setActionSolutions(feb.actionSolutions ?? "");
     setActualSpend(feb.actualSpend ?? 0);
     setSavings(feb.savings ?? "");
+    setTrackReceivedDate(feb.receivedDate ? toDatetimeLocal(feb.receivedDate) : "");
     setEditingTracking(true);
+  };
+
+  const isAdmin = user.role === "admin" || user.role === "super_admin";
+  const isFinalApproval = canValidate && nextPendingStatus(feb) === "validee";
+  const valDate = finalValidationDate(feb);
+  const delta = deliveryDelta(feb);
+
+  const handleApprove = () => {
+    approveFeb(feb.id, comment.trim() || undefined);
+    setComment("");
+    toast.success("FEB approuvée");
+  };
+
+  const handleReopen = (reason: string) => {
+    reopenFeb(feb.id, reason);
+    toast.success("FEB rouverte pour modification");
   };
 
   const saveTracking = () => {
@@ -109,6 +126,7 @@ export default function FebDetail() {
       actionSolutions: actionSolutions.trim() || undefined,
       actualSpend: actualSpend || undefined,
       savings: savings.trim() || undefined,
+      receivedDate: trackReceivedDate ? new Date(trackReceivedDate).toISOString() : feb.receivedDate,
     });
     setEditingTracking(false);
     toast.success("Suivi mis à jour");

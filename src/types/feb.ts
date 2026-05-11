@@ -149,6 +149,29 @@ export interface Feb {
   actualSpend?: number;
   /** Savings on negotiations (text — can include XAF/EUR/USD) */
   savings?: string;
+
+  /** Audit log for admin reopens / edits after validation. */
+  editLog?: FebEditLogEntry[];
+}
+
+/** Date of the final validation step (when status became `validee`), if any. */
+export function finalValidationDate(feb: Feb): string | null {
+  if (feb.status !== "validee") return null;
+  const last = feb.validations[feb.validations.length - 1];
+  return last?.date ?? null;
+}
+
+/**
+ * Difference (in days) between the requested delivery date and the actual
+ * final validation date. Positive = validated before the requested date.
+ * Negative = validated after (late). Null if not yet validated.
+ */
+export function deliveryDelta(feb: Feb): number | null {
+  const v = finalValidationDate(feb);
+  if (!v) return null;
+  const requested = new Date(feb.delaiLivraison).getTime();
+  const validated = new Date(v).getTime();
+  return Math.round((requested - validated) / (1000 * 60 * 60 * 24));
 }
 
 // Workflow next-status mapping

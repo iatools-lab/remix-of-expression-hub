@@ -93,6 +93,15 @@ export interface ValidationStep {
   };
 }
 
+/** Audit entry for administrative actions on a FEB (e.g. reopening for edit). */
+export interface FebEditLogEntry {
+  date: string; // ISO
+  by: string; // user name
+  byEmail?: string;
+  action: "reouverture" | "modification";
+  reason: string;
+}
+
 export type ReceivedVia = "email" | "courrier" | "plateforme" | "telephone" | "autre";
 
 export const RECEIVED_VIA_LABELS: Record<ReceivedVia, string> = {

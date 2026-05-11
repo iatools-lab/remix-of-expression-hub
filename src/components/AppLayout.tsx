@@ -73,26 +73,40 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { to: "/febs/nouveau", label: "Nouvelle FEB", icon: PlusCircle, end: false },
       ];
 
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   function handleLogout() {
     logout();
     navigate("/login", { replace: true });
   }
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Sidebar */}
-      <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
+    <div className="min-h-screen bg-background">
+      {/* Sidebar - fixed */}
+      <aside
+        className={cn(
+          "fixed top-0 left-0 h-screen w-64 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border z-40 transition-transform duration-300",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
         <div className="p-5 border-b border-sidebar-border flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-white p-1 flex items-center justify-center overflow-hidden">
             <img src={logo} alt="upöwa logo" className="w-full h-full object-contain" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="font-bold text-white text-base leading-tight">upöwa</p>
             <p className="text-xs text-sidebar-foreground/70">FEB Dashboard</p>
           </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Masquer la barre latérale"
+            className="p-1.5 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-white transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -146,8 +160,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
+      {/* Show sidebar button (when hidden) */}
+      {!sidebarOpen && (
+        <button
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Afficher la barre latérale"
+          className="fixed top-4 left-4 z-50 p-2 rounded-md bg-sidebar text-white shadow-[var(--shadow-md)] hover:bg-sidebar-accent transition-colors"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      )}
+
       {/* Main */}
-      <main className="flex-1 overflow-auto">
+      <main
+        className={cn(
+          "min-h-screen transition-[margin] duration-300",
+          sidebarOpen ? "ml-64" : "ml-0"
+        )}
+      >
         <div
           className="max-w-[1400px] mx-auto p-8 animate-fade-in"
           key={location.pathname}
@@ -158,3 +188,4 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

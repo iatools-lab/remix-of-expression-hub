@@ -160,6 +160,7 @@ export default function Historique() {
             ))}
           </SelectContent>
         </Select>
+        <DateRangeFilter value={dateRange} onChange={setDateRange} placeholder="Période de création" />
       </div>
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">

@@ -55,7 +55,6 @@ export default function FebCreate() {
   const handleSubmit = (submit: boolean) => {
     if (!natureBesoin.trim()) return toast.error("La nature du besoin est obligatoire.");
     if (!delaiLivraison) return toast.error("Le délai de livraison est obligatoire.");
-    if (!fournisseur.trim()) return toast.error("Le fournisseur potentiel est obligatoire.");
     if (items.some((it) => !it.designation.trim() || it.quantite <= 0)) {
       return toast.error("Chaque article doit avoir une désignation et une quantité positive.");
     }
@@ -64,7 +63,7 @@ export default function FebCreate() {
       departement,
       items,
       delaiLivraison: new Date(delaiLivraison).toISOString(),
-      fournisseurPotentiel: fournisseur.trim(),
+      fournisseurPotentiel: fournisseur.trim() || "—",
       needsTechnicalReview,
       submit,
     });
@@ -123,7 +122,7 @@ export default function FebCreate() {
             />
           </div>
           <div className="md:col-span-2">
-            <Label htmlFor="fournisseur">Fournisseur potentiel *</Label>
+            <Label htmlFor="fournisseur">Fournisseur potentiel</Label>
             <Input
               id="fournisseur"
               value={fournisseur}

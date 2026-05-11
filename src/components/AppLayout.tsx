@@ -7,8 +7,8 @@ import {
   Inbox,
   LogOut,
   PenLine,
-  Building2,
-  ShoppingCart,
+  // Building2,
+  // ShoppingCart,
   Shield,
 } from "lucide-react";
 import logo from "@/assets/upowa-logo.jpg";
@@ -56,8 +56,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { to: "/febs/nouveau", label: "Nouvelle FEB", icon: PlusCircle, end: false },
         ...(canSeePOAndSuppliers
           ? [
-              { to: "/bons-achat", label: "Bons d'Achat", icon: ShoppingCart, end: false },
-              { to: "/prestataires", label: "Prestataires", icon: Building2, end: false },
+              // { to: "/bons-achat", label: "Bons d'Achat", icon: ShoppingCart, end: false },
+              // { to: "/prestataires", label: "Prestataires", icon: Building2, end: false },
             ]
           : []),
         { to: "/signature", label: "Ma signature", icon: PenLine, end: false },

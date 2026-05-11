@@ -63,6 +63,12 @@ enum SignatureType {
   TYPED
 }
 
+/// Type d'action administrative tracée dans `FebEditLog`.
+enum FebEditAction {
+  REOUVERTURE
+  MODIFICATION
+}
+
 /// Catégorie d'un fichier stocké dans la table `FileAsset`.
 enum FileKind {
   SIGNATURE
@@ -136,6 +142,7 @@ enum AuditAction {
   FEB_REJECTED
   FEB_DELETED
   FEB_PDF_EXPORTED
+  FEB_REOPENED
   // Référentiel
   DEPARTMENT_SIGNATORY_CHANGED
   // Prestataires
@@ -313,7 +320,8 @@ model Feb {
   numero String @unique @db.VarChar(40)
 
   natureBesoin         String  @map("nature_besoin") @db.VarChar(300)
-  fournisseurPotentiel String  @map("fournisseur_potentiel") @db.VarChar(200)
+  /// Fournisseur potentiel (optionnel — peut être renseigné plus tard par Supply Chain).
+  fournisseurPotentiel String? @map("fournisseur_potentiel") @db.VarChar(200)
   /// Indique si le circuit doit inclure le Responsable Pôle Technique.
   needsTechnicalReview Boolean @default(false) @map("needs_technical_review")
 
@@ -377,6 +385,7 @@ model Feb {
   items       FebItem[]
   validations FebValidation[]
   pdfExports  FebPdfExport[]
+  editLogs    FebEditLog[]
 
   @@index([status])
   @@index([demandeurId])
@@ -458,6 +467,27 @@ model FebPdfExport {
 
   @@index([febId])
   @@map("feb_pdf_exports")
+}
+
+/// Audit des interventions administratives sur une FEB après finalisation
+/// (réouverture pour modification, modification post-validation). Append-only.
+model FebEditLog {
+  id     String        @id @default(uuid()) @db.Uuid
+  febId  String        @map("feb_id") @db.Uuid
+  action FebEditAction
+  /// Auteur de l'intervention (administrateur).
+  byId    String? @map("by_id") @db.Uuid
+  byName  String  @map("by_name") @db.VarChar(120)
+  byEmail String? @map("by_email") @db.VarChar(255)
+  /// Justification obligatoire fournie par l'administrateur.
+  reason String @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  feb Feb @relation(fields: [febId], references: [id], onDelete: Cascade)
+
+  @@index([febId, createdAt])
+  @@map("feb_edit_logs")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

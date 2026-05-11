@@ -44,18 +44,20 @@ export default function Historique() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("all");
   const [dept, setDept] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const filtered = useMemo(() => {
     return scoped
       .filter((f) => (status === "all" ? true : f.status === status))
       .filter((f) => (dept === "all" ? true : f.departement === dept))
+      .filter((f) => inRange(f.createdAt, dateRange))
       .filter((f) => {
         if (!q) return true;
         const hay = `${f.numero} ${f.natureBesoin} ${f.fournisseurPotentiel} ${f.demandeurName}`.toLowerCase();
         return hay.includes(q.toLowerCase());
       })
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [scoped, q, status, dept]);
+  }, [scoped, q, status, dept, dateRange]);
   const exportToExcel = useCallback(() => {
     const fmtDate = (d?: string) => d ? format(new Date(d), "dd/MM/yyyy", { locale: fr }) : "";
     const rows = filtered.map((f) => ({

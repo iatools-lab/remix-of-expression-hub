@@ -269,6 +269,15 @@ export default function FebDetail() {
             {editingTracking ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                  <Label>Date & heure de réception</Label>
+                  <Input
+                    type="datetime-local"
+                    value={trackReceivedDate}
+                    onChange={(e) => setTrackReceivedDate(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
                   <Label>Nom du projet</Label>
                   <Input value={trackProjectName} onChange={(e) => setTrackProjectName(e.target.value)} placeholder="Ex: Rénovation bâtiment B" className="mt-1" />
                 </div>
@@ -390,16 +399,42 @@ export default function FebDetail() {
                     className="bg-card"
                   />
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <Button
-                      onClick={() => {
-                        approveFeb(feb.id, comment.trim() || undefined);
-                        setComment("");
-                        toast.success("FEB approuvée");
-                      }}
-                      className="bg-success hover:bg-success/90 text-success-foreground"
-                    >
-                      <Check className="w-4 h-4 mr-2" /> Approuver
-                    </Button>
+                    {isFinalApproval ? (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button className="bg-success hover:bg-success/90 text-success-foreground">
+                            <Check className="w-4 h-4 mr-2" /> Approuver (validation finale)
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Validation finale de la FEB ?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              <strong>Attention :</strong> cette action validera <strong>définitivement</strong> la FEB.
+                              Plus aucune modification ne sera possible — sauf réouverture par un administrateur.
+                              <br /><br />
+                              Confirmez-vous l'approbation finale ?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleApprove}
+                              className="bg-success hover:bg-success/90 text-success-foreground"
+                            >
+                              Confirmer la validation
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    ) : (
+                      <Button
+                        onClick={handleApprove}
+                        className="bg-success hover:bg-success/90 text-success-foreground"
+                      >
+                        <Check className="w-4 h-4 mr-2" /> Approuver
+                      </Button>
+                    )}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground">

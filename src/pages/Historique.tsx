@@ -4,11 +4,13 @@ import { Search, FileText, History, Download } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as XLSX from "xlsx";
+import type { DateRange } from "react-day-picker";
 import { useFebStore, formatXAF } from "@/store/feb-store";
 import { isValidatorRole, DEPARTMENTS, FebStatus, STATUS_LABELS, RECEIVED_VIA_LABELS, ROLE_LABELS } from "@/types/feb";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateRangeFilter, inRange } from "@/components/DateRangeFilter";
 import {
   Select,
   SelectContent,
@@ -42,18 +44,20 @@ export default function Historique() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("all");
   const [dept, setDept] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const filtered = useMemo(() => {
     return scoped
       .filter((f) => (status === "all" ? true : f.status === status))
       .filter((f) => (dept === "all" ? true : f.departement === dept))
+      .filter((f) => inRange(f.createdAt, dateRange))
       .filter((f) => {
         if (!q) return true;
         const hay = `${f.numero} ${f.natureBesoin} ${f.fournisseurPotentiel} ${f.demandeurName}`.toLowerCase();
         return hay.includes(q.toLowerCase());
       })
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [scoped, q, status, dept]);
+  }, [scoped, q, status, dept, dateRange]);
   const exportToExcel = useCallback(() => {
     const fmtDate = (d?: string) => d ? format(new Date(d), "dd/MM/yyyy", { locale: fr }) : "";
     const rows = filtered.map((f) => ({
@@ -156,6 +160,7 @@ export default function Historique() {
             ))}
           </SelectContent>
         </Select>
+        <DateRangeFilter value={dateRange} onChange={setDateRange} placeholder="Période de création" />
       </div>
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">

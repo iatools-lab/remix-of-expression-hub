@@ -56,6 +56,7 @@ interface FebStore {
   submitFeb: (id: string) => void;
   approveFeb: (id: string, comment?: string) => void;
   rejectFeb: (id: string, comment: string) => void;
+  reopenFeb: (id: string, reason: string) => void;
   deleteFeb: (id: string) => void;
 }
 
@@ -171,6 +172,28 @@ export const useFebStore = create<FebStore>()(
                 ...f.validations,
                 { role: user.role, userName: user.name, action: "rejetee", comment, date: new Date().toISOString() },
               ],
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        });
+      },
+      reopenFeb: (id, reason) => {
+        const user = get().getCurrentUser();
+        set({
+          febs: get().febs.map((f) => {
+            if (f.id !== id) return f;
+            const entry = {
+              date: new Date().toISOString(),
+              by: user.name,
+              byEmail: user.email,
+              action: "reouverture" as const,
+              reason,
+            };
+            return {
+              ...f,
+              status: "brouillon" as FebStatus,
+              validations: [],
+              editLog: [...(f.editLog ?? []), entry],
               updatedAt: new Date().toISOString(),
             };
           }),

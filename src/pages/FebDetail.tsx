@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useFebStore, formatXAF } from "@/store/feb-store";
-import { canActOn, ROLE_LABELS, roleForStatus, RECEIVED_VIA_LABELS, ReceivedVia } from "@/types/feb";
+import { canActOn, ROLE_LABELS, roleForStatus, RECEIVED_VIA_LABELS, ReceivedVia, deliveryDelta, finalValidationDate, nextPendingStatus } from "@/types/feb";
+import { ReopenFebDialog } from "@/components/ReopenFebDialog";
 import {
   Select,
   SelectContent,
@@ -20,6 +21,13 @@ import { ArrowLeft, Download, Send, Check, X, Calendar, Building2, User, Truck, 
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+function toDatetimeLocal(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +49,7 @@ export default function FebDetail() {
   const approveFeb = useFebStore((s) => s.approveFeb);
   const rejectFeb = useFebStore((s) => s.rejectFeb);
   const updateFeb = useFebStore((s) => s.updateFeb);
+  const reopenFeb = useFebStore((s) => s.reopenFeb);
 
   const [comment, setComment] = useState("");
   const [rejectReason, setRejectReason] = useState("");
@@ -60,6 +69,7 @@ export default function FebDetail() {
   const [actionSolutions, setActionSolutions] = useState("");
   const [actualSpend, setActualSpend] = useState<number>(0);
   const [savings, setSavings] = useState("");
+  const [trackReceivedDate, setTrackReceivedDate] = useState(""); // datetime-local
 
   if (!feb) {
     return (
@@ -88,7 +98,24 @@ export default function FebDetail() {
     setActionSolutions(feb.actionSolutions ?? "");
     setActualSpend(feb.actualSpend ?? 0);
     setSavings(feb.savings ?? "");
+    setTrackReceivedDate(feb.receivedDate ? toDatetimeLocal(feb.receivedDate) : "");
     setEditingTracking(true);
+  };
+
+  const isAdmin = user.role === "admin" || user.role === "super_admin";
+  const isFinalApproval = canValidate && nextPendingStatus(feb) === "validee";
+  const valDate = finalValidationDate(feb);
+  const delta = deliveryDelta(feb);
+
+  const handleApprove = () => {
+    approveFeb(feb.id, comment.trim() || undefined);
+    setComment("");
+    toast.success("FEB approuvée");
+  };
+
+  const handleReopen = (reason: string) => {
+    reopenFeb(feb.id, reason);
+    toast.success("FEB rouverte pour modification");
   };
 
   const saveTracking = () => {
@@ -106,6 +133,7 @@ export default function FebDetail() {
       actionSolutions: actionSolutions.trim() || undefined,
       actualSpend: actualSpend || undefined,
       savings: savings.trim() || undefined,
+      receivedDate: trackReceivedDate ? new Date(trackReceivedDate).toISOString() : feb.receivedDate,
     });
     setEditingTracking(false);
     toast.success("Suivi mis à jour");
@@ -142,11 +170,51 @@ export default function FebDetail() {
           <div className="flex flex-col items-start md:items-end gap-2">
             <p className="text-xs text-muted-foreground">Montant total estimé</p>
             <p className="text-3xl font-bold text-foreground">{formatXAF(feb.totalEstime)}</p>
-            <Button variant="outline" size="sm" onClick={() => exportFebPdf(feb)}>
-              <Download className="w-4 h-4 mr-1.5" /> Exporter en PDF
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => exportFebPdf(feb)}>
+                <Download className="w-4 h-4 mr-1.5" /> Exporter en PDF
+              </Button>
+              {isAdmin && feb.status === "validee" && (
+                <ReopenFebDialog onConfirm={handleReopen} />
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Delivery vs validation summary */}
+        {valDate && (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-border">
+            <div>
+              <p className="text-xs text-muted-foreground">Date validation finale</p>
+              <p className="text-sm font-semibold text-foreground mt-0.5">
+                {format(new Date(valDate), "dd MMM yyyy 'à' HH:mm", { locale: fr })}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Livraison souhaitée</p>
+              <p className="text-sm font-semibold text-foreground mt-0.5">
+                {format(new Date(feb.delaiLivraison), "dd MMM yyyy", { locale: fr })}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Délai effectif</p>
+              {delta != null && (
+                <p
+                  className={cn(
+                    "text-sm font-semibold mt-0.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded",
+                    delta >= 0
+                      ? "text-success bg-success/10"
+                      : "text-destructive bg-destructive/10"
+                  )}
+                >
+                  {delta >= 0
+                    ? `+${delta} j de marge`
+                    : `${Math.abs(delta)} j de retard`}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -200,6 +268,15 @@ export default function FebDetail() {
 
             {editingTracking ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Date & heure de réception</Label>
+                  <Input
+                    type="datetime-local"
+                    value={trackReceivedDate}
+                    onChange={(e) => setTrackReceivedDate(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
                 <div>
                   <Label>Nom du projet</Label>
                   <Input value={trackProjectName} onChange={(e) => setTrackProjectName(e.target.value)} placeholder="Ex: Rénovation bâtiment B" className="mt-1" />
@@ -322,16 +399,42 @@ export default function FebDetail() {
                     className="bg-card"
                   />
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <Button
-                      onClick={() => {
-                        approveFeb(feb.id, comment.trim() || undefined);
-                        setComment("");
-                        toast.success("FEB approuvée");
-                      }}
-                      className="bg-success hover:bg-success/90 text-success-foreground"
-                    >
-                      <Check className="w-4 h-4 mr-2" /> Approuver
-                    </Button>
+                    {isFinalApproval ? (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button className="bg-success hover:bg-success/90 text-success-foreground">
+                            <Check className="w-4 h-4 mr-2" /> Approuver (validation finale)
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Validation finale de la FEB ?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              <strong>Attention :</strong> cette action validera <strong>définitivement</strong> la FEB.
+                              Plus aucune modification ne sera possible — sauf réouverture par un administrateur.
+                              <br /><br />
+                              Confirmez-vous l'approbation finale ?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleApprove}
+                              className="bg-success hover:bg-success/90 text-success-foreground"
+                            >
+                              Confirmer la validation
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    ) : (
+                      <Button
+                        onClick={handleApprove}
+                        className="bg-success hover:bg-success/90 text-success-foreground"
+                      >
+                        <Check className="w-4 h-4 mr-2" /> Approuver
+                      </Button>
+                    )}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground">
@@ -396,9 +499,28 @@ export default function FebDetail() {
             <h2 className="font-semibold text-foreground mb-2">Informations</h2>
             <MetaRow label="Créée le" value={format(new Date(feb.createdAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })} />
             <MetaRow label="Mise à jour" value={format(new Date(feb.updatedAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })} />
-            {feb.receivedDate && <MetaRow label="Reçue le" value={format(new Date(feb.receivedDate), "dd MMM yyyy", { locale: fr })} />}
+            {feb.receivedDate && <MetaRow label="Reçue le" value={format(new Date(feb.receivedDate), "dd MMM yyyy 'à' HH:mm", { locale: fr })} />}
             <MetaRow label="Validation technique" value={feb.needsTechnicalReview ? "Requise" : "Non requise"} />
           </section>
+
+          {feb.editLog && feb.editLog.length > 0 && (
+            <section className="card-elevated p-6 space-y-2 border-l-4 border-l-warning">
+              <h2 className="font-semibold text-foreground mb-2">Journal des modifications admin</h2>
+              <div className="space-y-2">
+                {feb.editLog.map((e, i) => (
+                  <div key={i} className="text-xs border-l-2 border-warning pl-3 py-1">
+                    <p className="font-medium text-foreground">
+                      {e.action === "reouverture" ? "Réouverture" : "Modification"} — {e.by}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {format(new Date(e.date), "dd MMM yyyy 'à' HH:mm", { locale: fr })}
+                    </p>
+                    <p className="italic text-muted-foreground mt-1">« {e.reason} »</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </div>

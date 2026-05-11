@@ -21,6 +21,13 @@ import { ArrowLeft, Download, Send, Check, X, Calendar, Building2, User, Truck, 
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+function toDatetimeLocal(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 import {
   AlertDialog,
   AlertDialogAction,

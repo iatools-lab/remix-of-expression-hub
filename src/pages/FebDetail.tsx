@@ -163,11 +163,51 @@ export default function FebDetail() {
           <div className="flex flex-col items-start md:items-end gap-2">
             <p className="text-xs text-muted-foreground">Montant total estimé</p>
             <p className="text-3xl font-bold text-foreground">{formatXAF(feb.totalEstime)}</p>
-            <Button variant="outline" size="sm" onClick={() => exportFebPdf(feb)}>
-              <Download className="w-4 h-4 mr-1.5" /> Exporter en PDF
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => exportFebPdf(feb)}>
+                <Download className="w-4 h-4 mr-1.5" /> Exporter en PDF
+              </Button>
+              {isAdmin && feb.status === "validee" && (
+                <ReopenFebDialog onConfirm={handleReopen} />
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Delivery vs validation summary */}
+        {valDate && (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-border">
+            <div>
+              <p className="text-xs text-muted-foreground">Date validation finale</p>
+              <p className="text-sm font-semibold text-foreground mt-0.5">
+                {format(new Date(valDate), "dd MMM yyyy 'à' HH:mm", { locale: fr })}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Livraison souhaitée</p>
+              <p className="text-sm font-semibold text-foreground mt-0.5">
+                {format(new Date(feb.delaiLivraison), "dd MMM yyyy", { locale: fr })}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Délai effectif</p>
+              {delta != null && (
+                <p
+                  className={cn(
+                    "text-sm font-semibold mt-0.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded",
+                    delta >= 0
+                      ? "text-success bg-success/10"
+                      : "text-destructive bg-destructive/10"
+                  )}
+                >
+                  {delta >= 0
+                    ? `+${delta} j de marge`
+                    : `${Math.abs(delta)} j de retard`}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

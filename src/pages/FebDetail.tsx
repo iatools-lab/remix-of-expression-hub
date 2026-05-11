@@ -42,6 +42,7 @@ export default function FebDetail() {
   const approveFeb = useFebStore((s) => s.approveFeb);
   const rejectFeb = useFebStore((s) => s.rejectFeb);
   const updateFeb = useFebStore((s) => s.updateFeb);
+  const reopenFeb = useFebStore((s) => s.reopenFeb);
 
   const [comment, setComment] = useState("");
   const [rejectReason, setRejectReason] = useState("");

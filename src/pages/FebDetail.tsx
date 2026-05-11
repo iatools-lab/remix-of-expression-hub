@@ -62,6 +62,7 @@ export default function FebDetail() {
   const [actionSolutions, setActionSolutions] = useState("");
   const [actualSpend, setActualSpend] = useState<number>(0);
   const [savings, setSavings] = useState("");
+  const [trackReceivedDate, setTrackReceivedDate] = useState(""); // datetime-local
 
   if (!feb) {
     return (

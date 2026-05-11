@@ -56,6 +56,7 @@ interface FebStore {
   submitFeb: (id: string) => void;
   approveFeb: (id: string, comment?: string) => void;
   rejectFeb: (id: string, comment: string) => void;
+  reopenFeb: (id: string, reason: string) => void;
   deleteFeb: (id: string) => void;
 }
 

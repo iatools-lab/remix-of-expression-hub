@@ -499,7 +499,7 @@ export default function FebDetail() {
             <h2 className="font-semibold text-foreground mb-2">Informations</h2>
             <MetaRow label="Créée le" value={format(new Date(feb.createdAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })} />
             <MetaRow label="Mise à jour" value={format(new Date(feb.updatedAt), "dd MMM yyyy 'à' HH:mm", { locale: fr })} />
-            {feb.receivedDate && <MetaRow label="Reçue le" value={format(new Date(feb.receivedDate), "dd MMM yyyy", { locale: fr })} />}
+            {feb.receivedDate && <MetaRow label="Reçue le" value={format(new Date(feb.receivedDate), "dd MMM yyyy 'à' HH:mm", { locale: fr })} />}
             <MetaRow label="Validation technique" value={feb.needsTechnicalReview ? "Requise" : "Non requise"} />
           </section>
         </div>

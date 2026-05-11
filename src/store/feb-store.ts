@@ -177,6 +177,28 @@ export const useFebStore = create<FebStore>()(
           }),
         });
       },
+      reopenFeb: (id, reason) => {
+        const user = get().getCurrentUser();
+        set({
+          febs: get().febs.map((f) => {
+            if (f.id !== id) return f;
+            const entry = {
+              date: new Date().toISOString(),
+              by: user.name,
+              byEmail: user.email,
+              action: "reouverture" as const,
+              reason,
+            };
+            return {
+              ...f,
+              status: "brouillon" as FebStatus,
+              validations: [],
+              editLog: [...(f.editLog ?? []), entry],
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        });
+      },
       deleteFeb: (id) => set({ febs: get().febs.filter((f) => f.id !== id) }),
     }),
     { name: "feb-store-v1" }

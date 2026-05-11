@@ -469,6 +469,27 @@ model FebPdfExport {
   @@map("feb_pdf_exports")
 }
 
+/// Audit des interventions administratives sur une FEB après finalisation
+/// (réouverture pour modification, modification post-validation). Append-only.
+model FebEditLog {
+  id     String        @id @default(uuid()) @db.Uuid
+  febId  String        @map("feb_id") @db.Uuid
+  action FebEditAction
+  /// Auteur de l'intervention (administrateur).
+  byId    String? @map("by_id") @db.Uuid
+  byName  String  @map("by_name") @db.VarChar(120)
+  byEmail String? @map("by_email") @db.VarChar(255)
+  /// Justification obligatoire fournie par l'administrateur.
+  reason String @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  feb Feb @relation(fields: [febId], references: [id], onDelete: Cascade)
+
+  @@index([febId, createdAt])
+  @@map("feb_edit_logs")
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // STOCKAGE FICHIERS (en base)
 // ─────────────────────────────────────────────────────────────────────────────

@@ -502,6 +502,25 @@ export default function FebDetail() {
             {feb.receivedDate && <MetaRow label="Reçue le" value={format(new Date(feb.receivedDate), "dd MMM yyyy 'à' HH:mm", { locale: fr })} />}
             <MetaRow label="Validation technique" value={feb.needsTechnicalReview ? "Requise" : "Non requise"} />
           </section>
+
+          {feb.editLog && feb.editLog.length > 0 && (
+            <section className="card-elevated p-6 space-y-2 border-l-4 border-l-warning">
+              <h2 className="font-semibold text-foreground mb-2">Journal des modifications admin</h2>
+              <div className="space-y-2">
+                {feb.editLog.map((e, i) => (
+                  <div key={i} className="text-xs border-l-2 border-warning pl-3 py-1">
+                    <p className="font-medium text-foreground">
+                      {e.action === "reouverture" ? "Réouverture" : "Modification"} — {e.by}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {format(new Date(e.date), "dd MMM yyyy 'à' HH:mm", { locale: fr })}
+                    </p>
+                    <p className="italic text-muted-foreground mt-1">« {e.reason} »</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </div>

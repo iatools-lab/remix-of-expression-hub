@@ -4,11 +4,13 @@ import { Search, FileText, History, Download } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import * as XLSX from "xlsx";
+import type { DateRange } from "react-day-picker";
 import { useFebStore, formatXAF } from "@/store/feb-store";
 import { isValidatorRole, DEPARTMENTS, FebStatus, STATUS_LABELS, RECEIVED_VIA_LABELS, ROLE_LABELS } from "@/types/feb";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateRangeFilter, inRange } from "@/components/DateRangeFilter";
 import {
   Select,
   SelectContent,
